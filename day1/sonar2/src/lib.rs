@@ -10,27 +10,30 @@ pub mod config;
 
 pub fn run(config: Config) -> Result<u32, Box<dyn Error>> {
     let filename = config.filename;
+    let window_size = 3 + 1;
 
     let mut increase_count = 0;
     
-    let mut a;
-    let mut b = u32::MAX;
-    let mut c = u32::MAX;
-    let mut d = u32::MAX;
+    let mut window = vec![u32::MAX; window_size];
     
     let lines = read_lines(filename)?;
     for line in lines {
         let depth = line?.parse::<u32>()?;
         
-        a = b;
-        b = c;
-        c = d;
-        d = depth;
+        let mut first_total = 0u32;
 
-        let window_one = a.saturating_add(b).saturating_add(c);
-        let window_two = b.saturating_add(c).saturating_add(d);
+        for i in 0..window.len() - 1 {
+            window[i] = window[i + 1];
+            first_total = first_total.saturating_add(window[i]);
+        }
 
-        if window_two > window_one {
+        window[window_size - 1] = depth;
+
+        println!("{:?}", window);
+
+        let second_total = first_total.saturating_sub(window[0]).saturating_add(depth);
+
+        if second_total > first_total {
             increase_count += 1;
         }
     }
