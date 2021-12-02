@@ -11,7 +11,7 @@ pub mod config;
 
 pub fn run(config: Config) -> Result<u32, Box<dyn Error>> {
     let filename = config.filename;
-    let window_size = 3;
+    let window_size = config.window_size;
 
     let mut increase_count = 0;
     
