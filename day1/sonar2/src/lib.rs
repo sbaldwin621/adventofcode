@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fmt::Display;
 use std::fs::{File};
@@ -10,32 +11,32 @@ pub mod config;
 
 pub fn run(config: Config) -> Result<u32, Box<dyn Error>> {
     let filename = config.filename;
-    let window_size = 3 + 1;
+    let window_size = 3;
 
     let mut increase_count = 0;
     
-    let mut window = vec![u32::MAX; window_size];
-    
+    let mut window = VecDeque::with_capacity(window_size);
+    let mut previous_total = u32::MAX;
+    let mut current_total = 0;
+
     let lines = read_lines(filename)?;
     for line in lines {
         let depth = line?.parse::<u32>()?;
         
-        let mut first_total = 0u32;
+        current_total += depth;
+        window.push_back(depth);
 
-        for i in 0..window.len() - 1 {
-            window[i] = window[i + 1];
-            first_total = first_total.saturating_add(window[i]);
+        if window.len() > window_size {
+            if let Some(popped) = window.pop_front() {
+                current_total -= popped;
+
+                if current_total > previous_total {
+                    increase_count += 1;
+                }
+            }
         }
-
-        window[window_size - 1] = depth;
-
-        println!("{:?}", window);
-
-        let second_total = first_total.saturating_sub(window[0]).saturating_add(depth);
-
-        if second_total > first_total {
-            increase_count += 1;
-        }
+        
+        previous_total = current_total;
     }
 
     Ok(increase_count)
