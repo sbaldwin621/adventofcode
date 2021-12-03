@@ -1,14 +1,13 @@
-use std::error::Error;
-use std::fmt::Display;
 use std::fs::{File};
 use std::io::{self, BufRead};
 use std::path::Path;
+use thiserror::Error;
 
 use config::Config;
 
 pub mod config;
 
-pub fn run(config: Config) -> Result<u32, Box<dyn Error>> {
+pub fn run(config: Config) -> Result<u32, ApplicationError> {
     let filename = config.filename;
 
     let lines = read_lines(filename)?;
@@ -25,17 +24,8 @@ where P: AsRef<Path>, {
     Ok(io::BufReader::new(file).lines())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ApplicationError {
-    AnError
+    #[error("couldn't read puzzle input: {0}")]
+    CouldntReadInput(#[from] io::Error)
 }
-
-impl Display for ApplicationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", match self {
-            AnError => "an error occurred"  
-        })
-    }
-}
-
-impl Error for ApplicationError { }
