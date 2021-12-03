@@ -1,5 +1,4 @@
-use std::error::Error;
-use std::fmt::Display;
+use thiserror::Error;
 
 pub struct Config {
     pub filename: String
@@ -17,17 +16,8 @@ impl Config {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseConfigError {
+    #[error("not enough arguments")]
     NotEnoughArguments
 }
-
-impl Display for ParseConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", match self {
-            ParseConfigError::NotEnoughArguments => "not enough arguments"
-        })
-    }
-}
-
-impl Error for ParseConfigError { }
