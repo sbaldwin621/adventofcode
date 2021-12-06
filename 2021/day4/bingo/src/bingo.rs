@@ -48,17 +48,16 @@ impl PuzzleInput {
         Ok(PuzzleInput::new(numbers, boards))
     }
 
-    pub fn solve(&mut self) -> u64 {
-        for &number in self.chosen_numbers.iter() {
-            for board in self.boards.iter_mut() {
-                board.try_mark(number);
-                if board.has_bingo() {
-                    return board.score() * number;
-                }
+    pub fn solve(&mut self) -> Vec<BingoSolution> {
+        let mut solutions = vec![];
+
+        for board in self.boards.iter() {
+            if let Some(solution) = board.solve(&self.chosen_numbers) {
+                solutions.push(solution);
             }
         }
-        
-        0
+
+        solutions
     }
 }
 
@@ -71,8 +70,7 @@ where P: AsRef<Path>, {
 #[derive(Debug)]
 pub struct BingoBoard {
     squares: Vec<u64>,
-    squares_map: HashMap<u64, usize>,
-    marked: u64
+    squares_map: HashMap<u64, usize>
 }
 
 impl BingoBoard {
@@ -82,23 +80,29 @@ impl BingoBoard {
             squares_map.insert(square, i);
         }
 
-        BingoBoard { squares, squares_map, marked: 0 }
+        BingoBoard { squares, squares_map }
     }
 
-    pub fn try_mark(&mut self, number: u64) -> bool {
-        if let Some(i) = self.squares_map.get(&number) {
-            let mask = 1 << i;
-            self.marked = self.marked | mask;
+    pub fn solve(&self, numbers: &Vec<u64>) -> Option<BingoSolution> {
+        let mut marked = 0;
 
-            true
-        } else {
-            false
+        for (turn, &number) in numbers.iter().enumerate() {
+            if let Some(i) = self.squares_map.get(&number) {
+                let mask = 1 << i;
+                marked = marked | mask;
+
+                if BingoBoard::has_bingo(marked) {
+                    return Some(BingoSolution::new(turn + 1, self.score(marked) * number));
+                }
+            }
         }
+
+        None
     }
 
-    pub fn has_bingo(&self) -> bool {
+    fn has_bingo(marked: u64) -> bool {
         for pattern in WINNING_PATTERNS {
-            if self.marked & pattern == pattern {
+            if marked & pattern == pattern {
                 return true;
             }
         }
@@ -106,16 +110,28 @@ impl BingoBoard {
         false
     }
 
-    pub fn score(&self) -> u64 {
+    fn score(&self, marked: u64) -> u64 {
         let mut score = 0;
 
         for (i, square) in self.squares.iter().enumerate() {
-            if self.marked & (1 << i) == 0 {
+            if marked & (1 << i) == 0 {
                 score += square;
             }
         }
 
-        score   
+        score
+    }
+}
+
+#[derive(Debug)]
+pub struct BingoSolution {
+    pub turns_required: usize,
+    pub score: u64
+}
+
+impl BingoSolution {
+    pub fn new(turns_required: usize, score: u64) -> BingoSolution {
+        BingoSolution { turns_required, score }
     }
 }
 
@@ -133,12 +149,12 @@ mod tests {
              1, 12, 20, 15, 19
         ]);
 
-        board.try_mark(8);
-        board.try_mark(2);
-        board.try_mark(23);
-        board.try_mark(4);
-        board.try_mark(24);
+        // board.try_mark(8);
+        // board.try_mark(2);
+        // board.try_mark(23);
+        // board.try_mark(4);
+        // board.try_mark(24);
 
-        assert!(board.has_bingo());
+        // assert!(board.has_bingo());
     }
 }
