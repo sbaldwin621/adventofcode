@@ -5,7 +5,7 @@ use nom::combinator::{map, map_res};
 use nom::multi::separated_list1;
 use nom::sequence::{separated_pair, delimited};
 
-use crate::puzzle::{Point, PuzzleInput, LineSegment};
+use crate::puzzle::{Vector2, PuzzleInput, LineSegment};
 
 pub fn parse_puzzle_input(input: &str) -> IResult<&str, PuzzleInput> {
     map(
@@ -21,21 +21,21 @@ pub fn line_segment(input: &str) -> IResult<&str, LineSegment> {
     )(input)
 }
 
-pub fn point(input: &str) -> IResult<&str, Point> {
+pub fn point(input: &str) -> IResult<&str, Vector2> {
     delimited(
         space0, 
         map(
             separated_pair(number, tag(","), number),
-            |(x, y)| Point::new(x, y)
+            |(x, y)| Vector2::new(x, y)
         ),
         space0
     )(input)
 }
 
-fn number(input: &str) -> IResult<&str, i64> {
+fn number(input: &str) -> IResult<&str, f64> {
     delimited(space0, map_res(
         take_while(is_digit), 
-        |s: &str| s.parse::<i64>()
+        |s: &str| s.parse::<f64>()
     ), space0)(input)
 }
 
@@ -63,18 +63,18 @@ mod tests {
             0,0 -> 8,8
             5,5 -> 8,2       
         ")).unwrap();
-        
+
         assert_eq!(PuzzleInput::new(vec![
-            LineSegment::new(Point::new(0, 9), Point::new(5, 9)),
-            LineSegment::new(Point::new(8, 0), Point::new(0, 8)),
-            LineSegment::new(Point::new(9, 4), Point::new(3, 4)),
-            LineSegment::new(Point::new(2, 2), Point::new(2, 1)),
-            LineSegment::new(Point::new(7, 0), Point::new(7, 4)),
-            LineSegment::new(Point::new(6, 4), Point::new(2, 0)),
-            LineSegment::new(Point::new(0, 9), Point::new(2, 9)),
-            LineSegment::new(Point::new(3, 4), Point::new(1, 4)),
-            LineSegment::new(Point::new(0, 0), Point::new(8, 8)),
-            LineSegment::new(Point::new(5, 5), Point::new(8, 2))
+            LineSegment::new(Vector2::new(0.0, 9.0), Vector2::new(5.0, 9.0)),
+            LineSegment::new(Vector2::new(8.0, 0.0), Vector2::new(0.0, 8.0)),
+            LineSegment::new(Vector2::new(9.0, 4.0), Vector2::new(3.0, 4.0)),
+            LineSegment::new(Vector2::new(2.0, 2.0), Vector2::new(2.0, 1.0)),
+            LineSegment::new(Vector2::new(7.0, 0.0), Vector2::new(7.0, 4.0)),
+            LineSegment::new(Vector2::new(6.0, 4.0), Vector2::new(2.0, 0.0)),
+            LineSegment::new(Vector2::new(0.0, 9.0), Vector2::new(2.0, 9.0)),
+            LineSegment::new(Vector2::new(3.0, 4.0), Vector2::new(1.0, 4.0)),
+            LineSegment::new(Vector2::new(0.0, 0.0), Vector2::new(8.0, 8.0)),
+            LineSegment::new(Vector2::new(5.0, 5.0), Vector2::new(8.0, 2.0))
         ]), result);
     }
 }
