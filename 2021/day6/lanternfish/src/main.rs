@@ -1,7 +1,7 @@
 use std::env;
 use std::process;
 
-use template::{run, config::Config};
+use lanternfish::{run, config::Config};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
