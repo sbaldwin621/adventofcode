@@ -1,14 +1,17 @@
 use std::fs::{File};
 use std::io::{self, BufRead};
 use std::path::Path;
+
+use clap::Parser;
 use thiserror::Error;
 
-use config::Config;
+#[derive(Parser)]
+pub struct CliOptions {
+    filename: std::path::PathBuf
+}
 
-pub mod config;
-
-pub fn run(config: Config) -> Result<u32, ApplicationError> {
-    let filename = config.filename;
+pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
+    let filename = options.filename;
 
     let lines = read_lines(filename)?;
     for _line in lines {
