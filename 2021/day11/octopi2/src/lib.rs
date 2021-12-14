@@ -1,7 +1,3 @@
-use std::collections::btree_map::IterMut;
-use std::fs::{File, read_to_string};
-use std::io::{self, BufRead};
-
 use clap::Parser;
 use thiserror::Error;
 
@@ -17,7 +13,7 @@ pub struct CliOptions {
 pub fn run(options: CliOptions) -> Result<u64, ApplicationError> {
     let filename = options.filename;
 
-    let contents = read_to_string(filename)?;
+    let contents = std::fs::read_to_string(filename)?;
     let mut grid = contents.parse::<OctopiGrid>()?;
     println!("{}", grid);
 
@@ -41,7 +37,7 @@ pub fn run(options: CliOptions) -> Result<u64, ApplicationError> {
 #[derive(Debug, Error)]
 pub enum ApplicationError {
     #[error("couldn't read puzzle input: {0}")]
-    CouldntReadInput(#[from] io::Error),
+    CouldntReadInput(#[from] std::io::Error),
     #[error("couldn't parse puzzle input: {0}")]
     CouldntParseInput(#[from] ParseOctopiGridError)
 }
