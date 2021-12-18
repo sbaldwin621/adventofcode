@@ -3,7 +3,8 @@ use std::collections::{HashMap, HashSet, BinaryHeap};
 #[derive(Debug)]
 pub struct MapBuilder {
     values: Vec<u64>,
-    width: Option<usize>
+    width: Option<usize>,
+    height: usize
 }
 
 impl MapBuilder {
@@ -11,7 +12,7 @@ impl MapBuilder {
         let lines = vec![];
         let width = None;
 
-        MapBuilder { values: lines, width }
+        MapBuilder { values: lines, width, height: 0 }
     }
 
     pub fn add_line(&mut self, line: String) {
@@ -22,38 +23,23 @@ impl MapBuilder {
         for value in line.chars().map(|c| c.to_string().parse::<u64>().unwrap()) {
             self.values.push(value);
         }
+
+        self.height += 1;
     }
 
     pub fn to_map(&self) -> Map {
         let width = self.width.unwrap();
 
-        let mut nodes = vec![];
-        let mut edges = HashMap::new();
-
-        for (i, &current_cost) in self.values.iter().enumerate() {
+        let mut nodes = HashMap::new();
+        
+        for (i, &cost) in self.values.iter().enumerate() {
             let x: i64 = (i % width).try_into().unwrap();
             let y: i64 = (i / width).try_into().unwrap();
-
-            let current = (x, y);
-
-            let north = (x, y - 1);
-            let west = (x - 1, y);
-            let east = (x + 1, y);
-            let south = (x, y + 1);
-
-            for next in [north, east, south, west] {
-                if let Some(cost) = self.get(next) {
-                    edges.entry(current).or_insert_with(|| vec![])
-                        .push(Edge { from: current, to: next, cost });
-                    edges.entry(next).or_insert_with(|| vec![])
-                        .push(Edge { from: next, to: current, cost: current_cost });
-                }
-            }
-
-            nodes.push(current);
+            
+            nodes.insert((x, y), cost);
         }
 
-        Map { nodes, edges }
+        Map { nodes, width, height: self.height }
     }
 
     fn get(&self, pos: (i64, i64)) -> Option<u64> {
@@ -75,26 +61,26 @@ impl MapBuilder {
 }
 
 #[derive(Debug)]
-pub struct Edge {
-    from: (i64, i64),
-    to: (i64, i64),
-    cost: u64
-}
-
-#[derive(Debug)]
 pub struct Map {
-    nodes: Vec<(i64, i64)>,
-    edges: HashMap<(i64, i64), Vec<Edge>>
+    nodes: HashMap<(i64, i64), u64>,
+    width: usize,
+    height: usize
 }
 
 impl Map {
     pub fn corner(&self) -> (i64, i64) {
-        *self.nodes.last().unwrap()
+        let width: i64 = self.width.try_into().unwrap();
+        let height: i64 = self.height.try_into().unwrap();
+
+        let x = width - 1;
+        let y = height - 1;
+
+        (x, y)
     }
 
     pub fn shortest_path(&self, start: (i64, i64), goal: (i64, i64)) -> Option<u64> {
         let mut dist = HashMap::new();
-        for &node in self.nodes.iter() {
+        for (&node, _) in self.nodes.iter() {
             dist.insert(node, u64::MAX);
         }
 
@@ -112,12 +98,18 @@ impl Map {
                 continue;
             }
 
-            if let Some(neighbors) = self.edges.get(&node) {
-                for edge in neighbors.iter() {
-                    let next = PathFinderState { cost: cost + edge.cost, node: edge.to };
-                    if next.cost < dist[&next.node] {
-                        dist.insert(next.node, next.cost);
-                        heap.push(next);
+            let (x, y) = node;
+            let north = (x, y - 1);
+            let east = (x + 1, y);
+            let south = (x, y + 1);
+            let west = (x - 1, y);
+
+            for next in [north, east, south, west] {
+                if let Some(next_cost) = self.nodes.get(&next) {
+                    let state = PathFinderState { cost: cost + next_cost, node: next };
+                    if state.cost < dist[&next] {
+                        dist.insert(next, state.cost);
+                        heap.push(state);
                     }
                 }
             }
