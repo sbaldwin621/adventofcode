@@ -1,4 +1,4 @@
-use std::fs::{File};
+use std::fs::{File, read_to_string};
 use std::io::{self, BufRead};
 use std::path::Path;
 
@@ -18,19 +18,19 @@ pub struct CliOptions {
     filename: std::path::PathBuf
 }
 
-pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
+pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
     let filename = options.filename;
 
-    let lines = read_lines(filename)?;
-    for line in lines {
-        let binary = get_binary(line?);
-        let slice = &binary[..];
-        let (_, packet) = parse_packet(slice).unwrap();
-        
-        println!("{:?}", packet);
-    }
+    let contents = read_to_string(filename)?;
+    let binary = get_binary(contents);
+    let slice = &binary[..];
+    let (_, packet) = parse_packet(slice).unwrap();
+    
+    println!("{:?}", packet);
 
-    Ok(0)
+    let version_sum = packet.version_sum();
+
+    Ok(version_sum)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
