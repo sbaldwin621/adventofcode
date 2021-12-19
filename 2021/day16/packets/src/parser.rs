@@ -1,5 +1,6 @@
 use std::cmp::min;
 
+use itertools::Itertools;
 use nom::{
     IResult,
     bits,
@@ -11,7 +12,31 @@ use nom::{
 
 use crate::bits::{Packet, PacketContents};
 
-pub fn parse_packet(i: &[u8]) -> IResult<&[u8], Packet> {
+pub fn parse_packet(i: &str) -> Packet {
+    let i = get_bytes(i);
+    let i = &i[..];
+
+    let (i, packet) = parse_packet_bytes(i).unwrap();
+    packet
+}
+
+fn get_bytes(s: &str) -> Vec<u8> {
+    let mut result = vec![];
+
+    for chunk in &s.chars().chunks(2) {
+        let mut s = String::new();
+        for c in chunk {
+            s.push(c);
+        }
+        
+        let n = u8::from_str_radix(&s, 16).unwrap();
+        result.push(n);
+    }
+
+    result
+}
+
+fn parse_packet_bytes(i: &[u8]) -> IResult<&[u8], Packet> {
     bits(parse_packet_bits)(i)
 }
 
@@ -30,16 +55,16 @@ fn literal(i: (&[u8], usize)) -> IResult<(&[u8], usize), PacketContents> {
     let (i, _) = tag(0b100, 3usize)(i)?;
     let (i, (values, terminating_value)) = pair(many0(literal_group), literal_group_terminator)(i)?;
 
-    let mut result: u32 = 0;
+    let mut result: usize = 0;
     for value in values {
         result = result << 4;
-        result |= value as u32;
+        result |= value as usize;
     }
 
     result = result << 4;
-    result |= terminating_value as u32;
+    result |= terminating_value as usize;
     
-    Ok((i, PacketContents::Literal(result.into())))
+    Ok((i, PacketContents::Literal(result)))
 }
 
 fn literal_group(i: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
@@ -99,8 +124,6 @@ fn zero_mode_length(i: (&[u8], usize)) -> IResult<(&[u8], usize), usize> {
 fn operator_one(i: (&[u8], usize)) -> IResult<(&[u8], usize), Vec<Packet>> {
     let (i, _) = tag(0b1, 1usize)(i)?;
     let (i, length) = one_mode_length(i)?;
-
-    println!("length {}", length);
 
     let (i, packets) = many_m_n(length, length, parse_packet_bits)(i)?;
 
