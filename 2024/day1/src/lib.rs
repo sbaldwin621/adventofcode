@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::iter::zip;
@@ -30,9 +31,6 @@ pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
         right_ids.push(right_id);
     }
 
-    left_ids.sort();
-    right_ids.sort();
-
     match part {
         1 => run_part1(left_ids, right_ids),
         2 => run_part2(left_ids, right_ids),
@@ -40,7 +38,10 @@ pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
     }
 }
 
-fn run_part1(left_ids: Vec<u32>, right_ids: Vec<u32>) -> Result<u32, ApplicationError> {
+fn run_part1(mut left_ids: Vec<u32>, mut right_ids: Vec<u32>) -> Result<u32, ApplicationError> {
+    left_ids.sort();
+    right_ids.sort();
+
     let mut sum = 0;
     for (a, b) in zip(left_ids, right_ids) {
         sum += a.abs_diff(b);
@@ -49,8 +50,20 @@ fn run_part1(left_ids: Vec<u32>, right_ids: Vec<u32>) -> Result<u32, Application
     Ok(sum)
 }
 
-fn run_part2(left_ids: Vec<u32>, right_ids: Vec<u32>) -> Result<u32, ApplicationError> {
-    unimplemented!()
+fn run_part2(mut left_ids: Vec<u32>, mut right_ids: Vec<u32>) -> Result<u32, ApplicationError> {
+    let mut right_counts: HashMap<u32, u32> = HashMap::new();
+    for right_id in right_ids {
+        *right_counts.entry(right_id).or_default() += 1;
+    }
+
+    let mut score = 0;
+    for left_id in left_ids {
+        if let Some(&right_count) = right_counts.get(&left_id) {
+            score += left_id * right_count;
+        }
+    }
+
+    Ok(score)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
