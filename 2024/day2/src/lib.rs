@@ -27,7 +27,7 @@ pub fn run(options: CliOptions) -> Result<i32, ApplicationError> {
 
     match options.part {
         1 => run_part1(reports),
-        2 => run_part2(),
+        2 => run_part2(reports),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
@@ -38,8 +38,10 @@ fn run_part1(reports: Vec<Report>) -> Result<i32, ApplicationError> {
     Ok(score)
 }
 
-fn run_part2() -> Result<i32, ApplicationError> {
-    !unimplemented!()
+fn run_part2(reports: Vec<Report>) -> Result<i32, ApplicationError> {
+    let score: i32 = reports.iter().filter(|r| r.is_safe_with_dampener()).count().try_into().unwrap();
+
+    Ok(score)
 }
 
 pub struct Report {
@@ -79,6 +81,29 @@ impl Report {
         }
 
         true
+    }
+
+    pub fn is_safe_with_dampener(&self) -> bool {
+        if self.is_safe() {
+            return true;
+        }
+
+        for i in 0..self.levels.len() {
+            let levels_without_i: Vec<i32> = self.levels
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != i)
+                .map(|(_, &level)| level)
+                .collect();
+
+            let new_report = Report::new(levels_without_i);
+
+            if new_report.is_safe() {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -129,5 +154,15 @@ mod tests {
         assert_eq!(Report::new(vec![1, 3, 2, 4, 5]).is_safe(), false);
         assert_eq!(Report::new(vec![8, 6, 4, 4, 1]).is_safe(), false);
         assert_eq!(Report::new(vec![1, 3, 6, 7, 9]).is_safe(), true);
+    }
+
+    #[test]
+    fn test_report_with_dampener() {
+        assert_eq!(Report::new(vec![7, 6, 4, 2, 1]).is_safe_with_dampener(), true);
+        assert_eq!(Report::new(vec![1, 2, 7, 8, 9]).is_safe_with_dampener(), false);
+        assert_eq!(Report::new(vec![9, 7, 6, 2, 1]).is_safe_with_dampener(), false);
+        assert_eq!(Report::new(vec![1, 3, 2, 4, 5]).is_safe_with_dampener(), true);
+        assert_eq!(Report::new(vec![8, 6, 4, 4, 1]).is_safe_with_dampener(), true);
+        assert_eq!(Report::new(vec![1, 3, 6, 7, 9]).is_safe_with_dampener(), true);
     }
 }
