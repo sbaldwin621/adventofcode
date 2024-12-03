@@ -7,6 +7,7 @@ use thiserror::Error;
 
 #[derive(Parser)]
 pub struct CliOptions {
+    part: u32,
     filename: std::path::PathBuf
 }
 
@@ -18,7 +19,19 @@ pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
         // do something with lines
     }
 
-    Ok(0)
+    match options.part {
+        1 => run_part1(),
+        2 => run_part2(),
+        _ => Err(ApplicationError::UnknownPart)
+    }
+}
+
+fn run_part1() -> Result<u32, ApplicationError> {
+    !unimplemented!()
+}
+
+fn run_part2() -> Result<u32, ApplicationError> {
+    !unimplemented!()
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -29,6 +42,8 @@ where P: AsRef<Path>, {
 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
+    #[error("unknown part")]
+    UnknownPart,
     #[error("couldn't read puzzle input: {0}")]
     CouldntReadInput(#[from] io::Error)
 }
