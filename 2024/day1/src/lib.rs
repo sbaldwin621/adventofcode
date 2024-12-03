@@ -14,27 +14,25 @@ pub struct CliOptions {
 pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
     let filename = options.filename;
 
-    let mut left = Vec::new();
-    let mut right = Vec::new();
-
+    let mut left_ids = vec![];
+    let mut right_ids = vec![];
+    
     let lines = read_lines(filename)?;
     for line in lines {
-        let line = line.unwrap();
-        let mut columns_iter = line.split_whitespace();
-        let column_one = columns_iter.next().unwrap();
-        let column_two = columns_iter.next().unwrap();
-        let column_one = column_one.parse::<u32>().unwrap();
-        let column_two = column_two.parse::<u32>().unwrap();
-
-        left.push(column_one);
-        right.push(column_two);
+        let line = line?;
+        let mut split_iter = line.split_whitespace();
+        let left_id = split_iter.next().ok_or(ApplicationError::InvalidLine())?.parse::<u32>()?;
+        let right_id = split_iter.next().ok_or(ApplicationError::InvalidLine())?.parse::<u32>()?;
+        
+        left_ids.push(left_id);
+        right_ids.push(right_id);
     }
 
-    left.sort();
-    right.sort();
+    left_ids.sort();
+    right_ids.sort();
 
     let mut sum = 0;
-    for (a, b) in zip(left, right) {
+    for (a, b) in zip(left_ids, right_ids) {
         sum += a.abs_diff(b);
     }
     
@@ -50,5 +48,9 @@ where P: AsRef<Path>, {
 #[derive(Debug, Error)]
 pub enum ApplicationError {
     #[error("couldn't read puzzle input: {0}")]
-    CouldntReadInput(#[from] io::Error)
+    CouldntReadInput(#[from] io::Error),
+    #[error("invalid input line")]
+    InvalidLine(),
+    #[error("invalid int: {0}")]
+    InvalidInteger(#[from] std::num::ParseIntError)
 }
