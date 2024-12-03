@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::task::Poll;
 
 use itertools::Itertools;
 
@@ -45,6 +44,10 @@ impl PolymerChain {
         next_polymers.push(last.clone());
 
         self.polymers = next_polymers;
+    }
+
+    pub fn counts(&self) -> std::collections::HashMap<&String, usize> {
+        self.polymers.iter().counts_by(|polymer| &polymer.0)
     }
 
     pub fn score(&self) -> usize {

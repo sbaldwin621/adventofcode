@@ -24,8 +24,9 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
 
     let mut chain = puzzle_input.polymer_template.clone();
 
-    for _ in 0..iterations {
+    for n in 0..iterations {
         chain.apply_rules(&puzzle_input.insertion_rules);
+        println!("{} {:?}", n + 1, chain.counts().get(&"H".to_string()).unwrap());
     }
 
     println!("{}", chain);
@@ -33,12 +34,6 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
     let score = chain.score();
 
     Ok(score)
-}
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 #[derive(Debug, Error)]
