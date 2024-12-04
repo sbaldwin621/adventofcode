@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use clap::Parser;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use thiserror::Error;
 
@@ -81,11 +82,13 @@ impl FromStr for ShopProgram {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        static LANGUAGE_RE: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(r"(mul|don't|do)\((?:(\d{1,3}),(\d{1,3}))?\)").unwrap()
+        });
+
         let mut instructions = vec![];
         
-        let re = Regex::new(r"(mul|don't|do)\((?:(\d{1,3}),(\d{1,3}))?\)").unwrap();
-        
-        for captures in re.captures_iter(s) {
+        for captures in LANGUAGE_RE.captures_iter(s) {
             let operation = &captures[1];
             let shop_program_instruction = match operation {
                 "mul" if captures.len() == 4 => {
