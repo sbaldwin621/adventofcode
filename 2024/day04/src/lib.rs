@@ -14,30 +14,33 @@ pub struct CliOptions {
     filename: std::path::PathBuf
 }
 
-pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
+pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
     let filename = options.filename;
 
     let lines = read_lines(filename)?;
-    let mut lines_vec = vec![];
-
+    let mut lines_vec = vec![];    
+    
     for line in lines {
         lines_vec.push(line?);
     }
 
-    let word_search = WordSearch::new(lines_vec);
+    let row_size = lines_vec[0].len();
+    let input = lines_vec.join("");
+
+    let word_search = WordSearch::new(input, row_size);
 
     match options.part {
-        1 => run_part1(),
+        1 => run_part1(word_search),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
 
-fn run_part1() -> Result<u32, ApplicationError> {
-    !unimplemented!()
+fn run_part1(word_search: WordSearch) -> Result<usize, ApplicationError> {
+    Ok(word_search.search(&String::from("XMAS")))
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<usize, ApplicationError> {
     !unimplemented!()
 }
 

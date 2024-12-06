@@ -2,59 +2,77 @@ use std::ops::Index;
 use std::str::Bytes;
 
 pub struct WordSearch {
-    lines: Vec<String>
+    input: String,
+    row_size: usize
 }
 
-impl WordSearch {
-    pub fn new(lines: Vec<String>) -> WordSearch {
-        WordSearch { lines }
+impl<'a> WordSearch {
+    pub fn new(input: String, row_size: usize) -> WordSearch {
+        WordSearch { input, row_size }
     }
 
-    pub fn search(&self, target: String) -> usize {
+    pub fn search(&self, target: &String) -> usize {
         let mut count = 0;
 
-        let target_bytes = target.as_bytes();
+        let input = self.input.as_bytes();
+        let target = target.as_bytes();
+        let target_reversed: Vec<u8> = target.iter().rev().cloned().collect();
+        
+        count += self.search_impl(input, target, 1, 0);
+        count += self.search_impl(input, &target_reversed, 1, 0);
+        
+        count += self.search_impl(input, target, self.row_size, 1);
+        count += self.search_impl(input, &target_reversed, self.row_size, 1);
 
-        count += self.search_rows(&target);
-        count += self.search_columns(&target_bytes);
+        count += self.search_impl(input, target, self.row_size + 1, 1);
+        count += self.search_impl(input, &target_reversed, self.row_size + 1, 1);
+
+        count += self.search_impl(input, target, self.row_size - 1, 1);
+        count += self.search_impl(input, &target_reversed, self.row_size - 1, 1);
 
         count
     }
-
-    fn search_rows(&self, target: &String) -> usize {
-        let target_reversed: String = target.chars().rev().collect();
-
+    
+    fn search_impl(&self, input: &[u8], target: &[u8], step: usize, expected_row_difference: usize) -> usize {
         let mut count = 0;
 
-        for line in self.lines.iter() {
-            count += line.match_indices(target).count();
-            count += line.match_indices(&target_reversed).count();
-        }
+        for index in 0..input.len() {
+            if input[index] == target[0] {
+                let next = index + step;
 
-        count
-    }
+                let current_row = index / self.row_size;
+                let next_row = next / self.row_size;
 
-    fn search_columns(&self, target: &[u8]) -> usize {
-        // let target_reversed: Vec<u8> = target.iter().copied().rev().collect();
-        // let target_reversed = std::str::from_utf8(&target_reversed).unwrap();
-        
-        // let target = std::str::from_utf8(&target).unwrap();
-        
-
-        let line_length = self.lines.first().unwrap().len();
-
-        let mut count = 0;
-        let mut target_i: usize = 0;
-
-        let c = target[target_i];
-
-        for x in 0..line_length {
-            for y in 0..self.lines.len() {
-                
+                if next_row - current_row == expected_row_difference {
+                    count += self.match_rest(input, &target[1..], next, step, expected_row_difference);
+                }
             }
         }
 
-        todo!()
+        count
+    }
+
+    fn match_rest(&self, input: &[u8], target: &[u8], index: usize, step: usize, expected_row_difference: usize) -> usize {
+        if index >= input.len() {
+            return 0;
+        }
+
+        if input[index] == target[0] {
+            if target.len() == 1 {
+                return 1;
+            }
+
+            let next = index + step;
+
+            let current_row = index / self.row_size;
+            let next_row = next / self.row_size;
+
+            if next_row - current_row == expected_row_difference {
+                return self.match_rest(input, &target[1..], next, step, expected_row_difference);
+            }
+        }
+
+        0
     }
 }
 
@@ -64,19 +82,9 @@ mod tests {
 
     #[test]
     pub fn test() {
-        let word_search = WordSearch::new(vec![
-            String::from("MMMSXXMASM"),
-            String::from("MSAMXMSMSA"),
-            String::from("AMXSXMAAMM"),
-            String::from("MSAMASMSMX"),
-            String::from("XMASAMXAMM"),
-            String::from("XXAMMXXAMA"),
-            String::from("SMSMSASXSS"),
-            String::from("SAXAMASAAA"),
-            String::from("MAMMMXMMMM"),
-            String::from("MXMXAXMASX")
-        ]);
-        let count = word_search.search(String::from("XMAS"));
+        let input = String::from("MMMSXXMASMMSAMXMSMSAAMXSXMAAMMMSAMASMSMXXMASAMXAMMXXAMMXXAMASMSMSASXSSSAXAMASAAAMAMMMXMMMMMXMXAXMASX");
+        let word_search = WordSearch::new(input, 10);
+        let count = word_search.search(&String::from("XMAS"));
 
         assert_eq!(count, 18);
     }
