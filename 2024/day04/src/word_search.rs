@@ -1,6 +1,3 @@
-use std::ops::Index;
-use std::str::Bytes;
-
 pub struct WordSearch {
     input: String,
     row_size: usize
