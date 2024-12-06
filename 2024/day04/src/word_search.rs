@@ -5,7 +5,7 @@ pub struct WordSearch {
 
 impl<'a> WordSearch {
     pub fn new(input: String, row_size: usize) -> WordSearch {
-        let padding = std::iter::repeat(".").take(row_size * 5).collect::<String>();
+        let padding = std::iter::repeat(".").take(row_size * 4).collect::<String>();
         let input = padding.clone() + &input + &padding;
         
         WordSearch { input, row_size }
@@ -55,14 +55,16 @@ impl<'a> WordSearch {
                 (three_zero, three_one, three_two, three_three)
             );
             
-            let is_match = match (three_zero, three_one, three_two, three_three) {
-                (X, M, A, S)
-              | (S, A, M, X) => true,
-              _ => false
-            };
-
-            if is_match {
-                row_match_count += 1;
+            if i % self.row_size > 2 {
+                let is_match = match (three_zero, three_one, three_two, three_three) {
+                    (X, M, A, S)
+                  | (S, A, M, X) => true,
+                  _ => false
+                };
+    
+                if is_match {
+                    row_match_count += 1;
+                }   
             }
 
             let is_match = match (zero_three, one_three, two_three, three_three) {
@@ -75,24 +77,24 @@ impl<'a> WordSearch {
                 col_match_count += 1;
             }
 
-            if i % self.row_size > 2 {                
+            if i % self.row_size > 2 {
                 let is_match = match grid {
-                    ((X, _, _, _),
-                     (_, M, _, _),
-                     (_, _, A, _),
-                     (_, _, _, S)) => true,
-                    ((S, _, _, _),
-                     (_, A, _, _),
-                     (_, _, M, _),
-                     (_, _, _, X)) => true,
-                    ((_, _, _, S),
-                     (_, _, A, _),
-                     (_, M, _, _),
-                     (X, _, _, _)) => true,
-                    ((_, _, _, X),
-                     (_, _, M, _),
-                     (_, A, _, _),
-                     (S, _, _, _)) => true,
+                      ((X, _, _, _),
+                       (_, M, _, _),
+                       (_, _, A, _),
+                       (_, _, _, S))
+                    | ((S, _, _, _),
+                       (_, A, _, _),
+                       (_, _, M, _),
+                       (_, _, _, X))
+                    | ((_, _, _, S),
+                       (_, _, A, _),
+                       (_, M, _, _),
+                       (X, _, _, _))
+                    | ((_, _, _, X),
+                       (_, _, M, _),
+                       (_, A, _, _),
+                       (S, _, _, _)) => true,
                     _ => false
                 };
 
