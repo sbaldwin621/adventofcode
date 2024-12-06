@@ -5,71 +5,106 @@ pub struct WordSearch {
 
 impl<'a> WordSearch {
     pub fn new(input: String, row_size: usize) -> WordSearch {
+        let padding = std::iter::repeat(".").take(row_size * 5).collect::<String>();
+        let input = padding.clone() + &input + &padding;
+        
         WordSearch { input, row_size }
     }
 
-    pub fn search(&self, target: &String) -> usize {
-        let mut count = 0;
+    pub fn search(&self) -> usize {
+        let mut row_match_count = 0;
+        let mut col_match_count = 0;
+        let mut diag_match_count = 0;
 
         let input = self.input.as_bytes();
-        let target = target.as_bytes();
-        let target_reversed: Vec<u8> = target.iter().rev().cloned().collect();
-        
-        count += self.search_impl(input, target, 1, 0);
-        count += self.search_impl(input, &target_reversed, 1, 0);
-        
-        count += self.search_impl(input, target, self.row_size, 1);
-        count += self.search_impl(input, &target_reversed, self.row_size, 1);
 
-        count += self.search_impl(input, target, self.row_size + 1, 1);
-        count += self.search_impl(input, &target_reversed, self.row_size + 1, 1);
+        const X: u8 = 'X' as u8;
+        const M: u8 = 'M' as u8;
+        const A: u8 = 'A' as u8;
+        const S: u8 = 'S' as u8;
 
-        count += self.search_impl(input, target, self.row_size - 1, 1);
-        count += self.search_impl(input, &target_reversed, self.row_size - 1, 1);
+        let starting_index = self.row_size * 4;
+        for i in starting_index..input.len() {
+            let zero_index = i - 3 - self.row_size * 3;
+            let zero_zero = input[zero_index];
+            let zero_one = input[zero_index + 1];
+            let zero_two = input[zero_index + 2];
+            let zero_three = input[zero_index + 3];
 
-        count
-    }
-    
-    fn search_impl(&self, input: &[u8], target: &[u8], step: usize, expected_row_difference: usize) -> usize {
-        let mut count = 0;
+            let one_index = i - 3 - self.row_size * 2;
+            let one_zero = input[one_index];
+            let one_one = input[one_index + 1];
+            let one_two = input[one_index + 2];
+            let one_three = input[one_index + 3];
 
-        for index in 0..input.len() {
-            if input[index] == target[0] {
-                let next = index + step;
+            let two_index = i - 3 - self.row_size;
+            let two_zero = input[two_index];
+            let two_one = input[two_index + 1];
+            let two_two = input[two_index + 2];
+            let two_three = input[two_index + 3];
 
-                let current_row = index / self.row_size;
-                let next_row = next / self.row_size;
+            let three_zero = input[i - 3];
+            let three_one = input[i - 2];
+            let three_two = input[i - 1];
+            let three_three = input[i];                
 
-                if next_row - current_row == expected_row_difference {
-                    count += self.match_rest(input, &target[1..], next, step, expected_row_difference);
-                }
+            let grid = (
+                (zero_zero, zero_one, zero_two, zero_three),
+                (one_zero, one_one, one_two, one_three),
+                (two_zero, two_one, two_two, two_three),
+                (three_zero, three_one, three_two, three_three)
+            );
+            
+            let is_match = match (three_zero, three_one, three_two, three_three) {
+                (X, M, A, S)
+              | (S, A, M, X) => true,
+              _ => false
+            };
+
+            if is_match {
+                row_match_count += 1;
+            }
+
+            let is_match = match (zero_three, one_three, two_three, three_three) {
+                  (X, M, A, S)
+                | (S, A, M, X) => true,
+                _ => false
+            };
+
+            if is_match {
+                col_match_count += 1;
+            }
+
+            if i % self.row_size > 2 {                
+                let is_match = match grid {
+                    ((X, _, _, _),
+                     (_, M, _, _),
+                     (_, _, A, _),
+                     (_, _, _, S)) => true,
+                    ((S, _, _, _),
+                     (_, A, _, _),
+                     (_, _, M, _),
+                     (_, _, _, X)) => true,
+                    ((_, _, _, S),
+                     (_, _, A, _),
+                     (_, M, _, _),
+                     (X, _, _, _)) => true,
+                    ((_, _, _, X),
+                     (_, _, M, _),
+                     (_, A, _, _),
+                     (S, _, _, _)) => true,
+                    _ => false
+                };
+
+                if is_match {
+                    diag_match_count += 1;
+                } 
             }
         }
 
-        count
-    }
+        println!("rows {}, cols {}, diags {}", row_match_count, col_match_count, diag_match_count);
 
-    fn match_rest(&self, input: &[u8], target: &[u8], index: usize, step: usize, expected_row_difference: usize) -> usize {
-        if index >= input.len() {
-            return 0;
-        }
-
-        if input[index] == target[0] {
-            if target.len() == 1 {
-                return 1;
-            }
-
-            let next = index + step;
-
-            let current_row = index / self.row_size;
-            let next_row = next / self.row_size;
-
-            if next_row - current_row == expected_row_difference {
-                return self.match_rest(input, &target[1..], next, step, expected_row_difference);
-            }
-        }
-
-        0
+        row_match_count + col_match_count + diag_match_count
     }
 }
 
@@ -81,7 +116,7 @@ mod tests {
     pub fn test() {
         let input = String::from("MMMSXXMASMMSAMXMSMSAAMXSXMAAMMMSAMASMSMXXMASAMXAMMXXAMMXXAMASMSMSASXSSSAXAMASAAAMAMMMXMMMMMXMXAXMASX");
         let word_search = WordSearch::new(input, 10);
-        let count = word_search.search(&String::from("XMAS"));
+        let count = word_search.search();
 
         assert_eq!(count, 18);
     }

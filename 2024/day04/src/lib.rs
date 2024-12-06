@@ -40,7 +40,7 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
 }
 
 fn run_part1(word_search: WordSearch) -> Result<usize, ApplicationError> {
-    Ok(word_search.search(&String::from("XMAS")))
+    Ok(word_search.search())
 }
 
 fn run_part2(cross_search: CrossSearch) -> Result<usize, ApplicationError> {
