@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 
 use clap::Parser;
-use guard::{GuardSimulation, LabMap, LabMapRow};
+use guard::{GuardSimulation, LabMap, LabMapRow, LabMapTile};
 use thiserror::Error;
 
 mod guard;
@@ -30,21 +30,51 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
 
     match options.part {
         1 => run_part1(&map),
-        2 => run_part2(),
+        2 => run_part2(&map),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
 
 fn run_part1(map: &LabMap) -> Result<usize, ApplicationError> {
-    let mut simulation = GuardSimulation::new(&map);
-
-    while simulation.step() { }
+    let simulation = run_standard_simulation(map);
 
     Ok(simulation.visited_count())
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    !unimplemented!()
+fn run_part2(map: &LabMap) -> Result<usize, ApplicationError> {
+    let mut total_count = 0;
+    let mut success_count = 0;
+
+    let initial_simulation = run_standard_simulation(map);
+
+    for (x, y) in initial_simulation.locations_visited() {
+        let x = *x;
+        let y = *y;
+
+        if let LabMapTile::Empty = map.tile_at(x, y) {
+            total_count += 1;
+            println!("running simulation {} for {}, {}", total_count, x, y);
+
+            let mut simulation = GuardSimulation::new(&map, Some((x, y)));
+
+            while simulation.step() {
+                if simulation.loop_detected() {
+                    success_count += 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(success_count)
+}
+
+fn run_standard_simulation(map: &LabMap) -> GuardSimulation {
+    let mut simulation = GuardSimulation::new(&map, None);
+
+    while simulation.step() { }
+
+    simulation
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>

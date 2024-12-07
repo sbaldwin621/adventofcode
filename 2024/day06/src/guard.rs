@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::collections::{hash_set, HashSet};
+use std::hash::Hash;
 use std::panic;
 use std::str::FromStr;
 
@@ -54,6 +55,54 @@ impl LabMap {
             }
         }
     }
+
+    pub fn width(&self) -> usize {
+        self.rows[0].tiles.len()
+    }
+
+    pub fn height(&self) -> usize {
+        self.rows.len()
+    }
+
+    pub fn iter(&self) -> LabMapIterator<'_> {
+        let next = Some((0, 0, self.tile_at(0, 0)));
+
+        LabMapIterator { map: self, current: None, next }
+    }
+}
+
+pub struct LabMapIterator<'a> {
+    map: &'a LabMap,
+    current: Option<(i32, i32, LabMapTile)>,
+    next: Option<(i32, i32, LabMapTile)>
+}
+
+impl<'a> Iterator for LabMapIterator<'a> {
+    type Item = (i32, i32, LabMapTile);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.current = self.next;
+
+        if let Some((x, y, _)) = self.current {
+            let mut x = x + 1;
+            let mut y = y;
+            
+            if x >= self.map.width().try_into().unwrap() {
+                x = 0;
+                y += 1;
+            }
+    
+            if y >= self.map.height().try_into().unwrap() {
+                self.next = None;
+            } else {
+                let tile = self.map.tile_at(x, y);
+
+                self.next = Some((x, y, tile));
+            }
+        }
+
+        self.current
+    }
 }
 
 pub struct LabMapRow {
@@ -95,21 +144,27 @@ pub enum LabMapRowParseError {
 
 pub struct GuardSimulation<'a> {
     map: &'a LabMap,
+    extra_obstacle: Option<(i32, i32)>,
     x: i32,
     y: i32,
     heading: Direction,
-    locations_visited: HashSet<(i32, i32)>
+    locations_visited: HashSet<(i32, i32)>,
+    locations_and_headings_visited: HashSet<(i32, i32, Direction)>,
+    loop_detected: bool
 }
 
 impl<'a> GuardSimulation<'a> {
-    pub fn new(map: &'a LabMap) -> GuardSimulation<'a> {
+    pub fn new(map: &'a LabMap, extra_obstacle: Option<(i32, i32)>) -> GuardSimulation<'a> {
         if let Some((x, y)) = map.guard_starting_position() {
             let heading = Direction::North;
             
             let mut locations_visited = HashSet::new();
             locations_visited.insert((x, y));
+
+            let mut locations_and_headings_visited = HashSet::new();
+            locations_and_headings_visited.insert((x, y, heading));
             
-            GuardSimulation { map, x, y, heading, locations_visited }
+            GuardSimulation { map, extra_obstacle, x, y, heading, locations_visited, locations_and_headings_visited, loop_detected: false }
         } else {
             panic!("no guard starting position");
         }
@@ -125,7 +180,8 @@ impl<'a> GuardSimulation<'a> {
 
         let next_x = self.x + x_delta;
         let next_y = self.y + y_delta;
-        let next_tile = self.map.tile_at(next_x, next_y);
+
+        let next_tile = self.tile_at(next_x, next_y);
 
         match next_tile {
             LabMapTile::Empty | LabMapTile::GuardStartingPosition => {
@@ -134,11 +190,19 @@ impl<'a> GuardSimulation<'a> {
 
                 self.locations_visited.insert((self.x, self.y));
                 
+                if !self.locations_and_headings_visited.insert((self.x, self.y, self.heading)) {
+                    self.loop_detected = true;
+                }
+                
                 return true;
             },
             LabMapTile::Obstacle => {
                 self.heading = self.heading.rotate_right();
 
+                if !self.locations_and_headings_visited.insert((self.x, self.y, self.heading)) {
+                    self.loop_detected = true;
+                }
+                
                 return true;
             },
             LabMapTile::MapBoundary => {
@@ -147,17 +211,38 @@ impl<'a> GuardSimulation<'a> {
         }
     }
 
+    fn tile_at(&self, x: i32, y: i32) -> LabMapTile {
+        if let Some((obstacle_x, obstacle_y)) = self.extra_obstacle {
+            if obstacle_x == x && obstacle_y == y {
+                return LabMapTile::Obstacle;
+            }
+        }
+
+        self.map.tile_at(x, y)
+    }
+
+    pub fn loop_detected(&self) -> bool {
+        self.loop_detected
+    }
+
     pub fn visited_count(&self) -> usize {
         self.locations_visited.len()
     }
+
+    pub fn locations_visited(&self) -> hash_set::Iter<'_, (i32, i32)> {
+        self.locations_visited.iter()
+    }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Hash)]
 pub enum Direction {
     North,
     East,
     South,
     West
+}
+
+impl Eq for Direction {
 }
 
 impl Direction {
