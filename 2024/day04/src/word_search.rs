@@ -86,26 +86,32 @@ impl<'a> WordSearch {
                     | ((S, _, _, _),
                        (_, A, _, _),
                        (_, _, M, _),
-                       (_, _, _, X))
-                    | ((_, _, _, S),
-                       (_, _, A, _),
-                       (_, M, _, _),
-                       (X, _, _, _))
-                    | ((_, _, _, X),
-                       (_, _, M, _),
-                       (_, A, _, _),
-                       (S, _, _, _)) => true,
+                       (_, _, _, X)) => true,
                     _ => false
                 };
 
                 if is_match {
                     diag_match_count += 1;
-                } 
+                }
+
+                let is_match = match grid {
+                    ((_, _, _, S),
+                     (_, _, A, _),
+                     (_, M, _, _),
+                     (X, _, _, _))
+                  | ((_, _, _, X),
+                     (_, _, M, _),
+                     (_, A, _, _),
+                     (S, _, _, _)) => true,
+                  _ => false
+              };
+              
+              if is_match {
+                  diag_match_count += 1;
+              } 
             }
         }
-
-        println!("rows {}, cols {}, diags {}", row_match_count, col_match_count, diag_match_count);
-
+        
         row_match_count + col_match_count + diag_match_count
     }
 }
