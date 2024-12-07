@@ -5,6 +5,8 @@ use std::path::Path;
 use clap::Parser;
 use thiserror::Error;
 
+mod print_job;
+
 #[derive(Parser)]
 pub struct CliOptions {
     part: u32,
