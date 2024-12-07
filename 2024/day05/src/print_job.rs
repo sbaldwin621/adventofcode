@@ -10,7 +10,7 @@ impl PrintJob {
         PrintJob { rule_set, page_lists }
     }
 
-    pub fn calculate_score(&self) -> usize {
+    pub fn calculate_good_score(&self) -> usize {
         let mut score = 0;
 
         for page in self.page_lists.iter() {
@@ -21,8 +21,22 @@ impl PrintJob {
 
         score
     }
+
+    pub fn calculate_bad_score(&mut self) -> usize {
+        let mut score = 0;
+
+        for page in self.page_lists.iter_mut() {
+            if !page.check_rule_set(&self.rule_set) {
+                page.apply_rule_set(&self.rule_set);
+                score += page.score();
+            }
+        }
+
+        score
+    }
 }
 
+#[derive(Debug)]
 pub struct OrderRuleSet {
     rules: Vec<OrderRule>
 }
@@ -33,6 +47,7 @@ impl OrderRuleSet {
     }
 }
 
+#[derive(Debug)]
 pub struct OrderRule {
     left: usize,
     right: usize
@@ -84,6 +99,37 @@ impl PageList {
 
     fn get_page_position(&self, page_number: usize) -> Option<usize> {
         self.page_numbers.iter().position(|&page| page == page_number)
+    }
+
+    pub fn apply_rule_set(&mut self, rule_set: &OrderRuleSet) {
+        loop {
+            let mut at_least_one_rule = false;
+            for rule in rule_set.rules.iter() {
+                if self.apply_rule(rule) {
+                    at_least_one_rule = true;
+                }
+            }
+
+            if !at_least_one_rule {
+                return;
+            }
+        }        
+    }
+
+    fn apply_rule(&mut self, rule: &OrderRule) -> bool {
+        let left_position = self.get_page_position(rule.left);
+        let right_position = self.get_page_position(rule.right);
+
+        if let (Some(left_position), Some(right_position)) = (left_position, right_position) {
+            if left_position > right_position {
+                let slice = &mut self.page_numbers[right_position..=left_position];
+                slice.rotate_right(1);
+
+                return true;
+            }
+        }
+        
+        false
     }
 
     pub fn score(&self) -> usize {
@@ -141,5 +187,27 @@ mod tests {
         let rule = OrderRule::new(99, 53);
 
         assert_eq!(page_list.check_rule(&rule), true);
+    }
+
+    #[test]
+    pub fn apply_rule_set() {
+        // 97,13,75,29,47 becomes 97,75,47,29,13
+        let mut page_list = PageList::new(vec![97,13,75,29,47]);
+        let rule_set = OrderRuleSet::new(vec![
+            OrderRule::new(97, 13),
+            OrderRule::new(97, 47),
+            OrderRule::new(75, 29),
+            OrderRule::new(29, 13),
+            OrderRule::new(97, 29),
+            OrderRule::new(47, 13),
+            OrderRule::new(75, 47),
+            OrderRule::new(97, 75),
+            OrderRule::new(47, 29),
+            OrderRule::new(75, 13)
+        ]);
+    
+        page_list.apply_rule_set(&rule_set);
+        
+        assert_eq!(page_list.page_numbers, vec![97,75,47,29,13]);
     }
 }

@@ -51,21 +51,22 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
     }
 
     let rule_set = OrderRuleSet::new(order_rules);
-    let print_job = PrintJob::new(rule_set, page_number_lists);
-    
+    let mut print_job = PrintJob::new(rule_set, page_number_lists);
+
     match options.part {
         1 => run_part1(&print_job),
-        2 => run_part2(),
+        2 => run_part2(&mut print_job),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
 
 fn run_part1(print_job: &PrintJob) -> Result<usize, ApplicationError> {
-    Ok(print_job.calculate_score())
+    Ok(print_job.calculate_good_score())
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    !unimplemented!()
+// Really not happy that this requires a mutable reference and can only be done once
+fn run_part2(print_job: &mut PrintJob) -> Result<usize, ApplicationError> {
+    Ok(print_job.calculate_bad_score())
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
