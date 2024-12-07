@@ -3,6 +3,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 
 use clap::Parser;
+use print_job::{OrderRule, PageList, PrintJob};
 use thiserror::Error;
 
 mod print_job;
@@ -13,26 +14,56 @@ pub struct CliOptions {
     filename: std::path::PathBuf
 }
 
-pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
+enum PrintJobReadState {
+    ExpectingOrderRule,
+    ExpectingPageNumbers
+}
+
+pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
     let filename = options.filename;
+   
+    let mut state = PrintJobReadState::ExpectingOrderRule;
+    let mut order_rules = vec![];
+    let mut page_number_lists = vec![];
 
     let lines = read_lines(filename)?;
-    for _line in lines {
-        // do something with lines
+    for line in lines {
+        let line = line?;
+
+        state = match state {
+            PrintJobReadState::ExpectingOrderRule => {
+                if line.is_empty() {
+                    PrintJobReadState::ExpectingPageNumbers
+                } else {
+                    let order_rule: OrderRule = line.parse().unwrap();
+                    order_rules.push(order_rule);
+                    
+                    state
+                }
+            },
+            PrintJobReadState::ExpectingPageNumbers => {
+                let page_number_list: PageList = line.parse().unwrap();
+                page_number_lists.push(page_number_list);
+
+                state
+            },
+        }
     }
 
+    let print_job = PrintJob::new(order_rules, page_number_lists);
+
     match options.part {
-        1 => run_part1(),
+        1 => run_part1(&print_job),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
 
-fn run_part1() -> Result<u32, ApplicationError> {
-    !unimplemented!()
+fn run_part1(print_job: &PrintJob) -> Result<usize, ApplicationError> {
+    Ok(print_job.calculate_score())
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<usize, ApplicationError> {
     !unimplemented!()
 }
 

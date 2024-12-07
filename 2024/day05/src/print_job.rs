@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 pub struct PrintJob {
     order_rules: Vec<OrderRule>,
     page_lists: Vec<PageList>
@@ -8,8 +10,16 @@ impl PrintJob {
         PrintJob { order_rules, page_lists }
     }
 
-    pub fn calculate_score(&self) {
+    pub fn calculate_score(&self) -> usize {
+        let mut score = 0;
 
+        for page in self.page_lists.iter() {
+            if self.order_rules.iter().all(|rule| page.check_rule(rule)) {
+                score += page.score();
+            }
+        }
+
+        score
     }
 }
 
@@ -21,6 +31,21 @@ pub struct OrderRule {
 impl OrderRule {
     pub fn new(left: usize, right: usize) -> OrderRule {
         OrderRule { left, right }
+    }
+}
+
+impl FromStr for OrderRule {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split("|");
+        let left = split.next().and_then(|o| o.parse::<usize>().ok());
+        let right = split.next().and_then(|o| o.parse::<usize>().ok());
+
+        match (left, right) {
+            (Some(left), Some(right)) => Ok(OrderRule::new(left, right)),
+            _ => Err(())
+        }
     }
 }
 
@@ -46,12 +71,32 @@ impl PageList {
     fn get_page_position(&self, page_number: usize) -> Option<usize> {
         self.page_numbers.iter().position(|&page| page == page_number)
     }
+
+    pub fn score(&self) -> usize {
+        let middle_index = self.page_numbers.len() / 2;
+
+        self.page_numbers[middle_index]
+    }
+}
+
+impl FromStr for PageList {
+    type Err = ();
+    
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let split = s.split(",");
+        let page_numbers: Result<Vec<usize>, _> = split.map(|e| e.parse::<usize>()).collect();
+
+        match page_numbers {
+            Ok(page_numbers) => Ok(PageList::new(page_numbers)),
+            _ => Err(())
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     pub fn check_rule_passes() {
         let page_list = PageList::new(vec![75, 47, 61, 53, 29]);
