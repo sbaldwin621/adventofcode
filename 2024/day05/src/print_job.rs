@@ -1,25 +1,35 @@
 use std::str::FromStr;
 
 pub struct PrintJob {
-    order_rules: Vec<OrderRule>,
+    rule_set: OrderRuleSet,
     page_lists: Vec<PageList>
 }
 
 impl PrintJob {
-    pub fn new(order_rules: Vec<OrderRule>, page_lists: Vec<PageList>) -> PrintJob {
-        PrintJob { order_rules, page_lists }
+    pub fn new(rule_set: OrderRuleSet, page_lists: Vec<PageList>) -> PrintJob {
+        PrintJob { rule_set, page_lists }
     }
 
     pub fn calculate_score(&self) -> usize {
         let mut score = 0;
 
         for page in self.page_lists.iter() {
-            if self.order_rules.iter().all(|rule| page.check_rule(rule)) {
+            if page.check_rule_set(&self.rule_set) {
                 score += page.score();
             }
         }
 
         score
+    }
+}
+
+pub struct OrderRuleSet {
+    rules: Vec<OrderRule>
+}
+
+impl OrderRuleSet {
+    pub fn new(rules: Vec<OrderRule>) -> OrderRuleSet {
+        OrderRuleSet { rules }
     }
 }
 
@@ -58,7 +68,11 @@ impl PageList {
         PageList { page_numbers }
     }
 
-    pub fn check_rule(&self, rule: &OrderRule) -> bool {
+    pub fn check_rule_set(&self, rule_set: &OrderRuleSet) -> bool {
+        rule_set.rules.iter().all(|rule| self.check_rule(rule))
+    }
+
+    fn check_rule(&self, rule: &OrderRule) -> bool {
         let left_position = self.get_page_position(rule.left);
         let right_position = self.get_page_position(rule.right);
 
@@ -81,7 +95,7 @@ impl PageList {
 
 impl FromStr for PageList {
     type Err = ();
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let split = s.split(",");
         let page_numbers: Result<Vec<usize>, _> = split.map(|e| e.parse::<usize>()).collect();

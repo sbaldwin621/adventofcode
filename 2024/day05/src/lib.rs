@@ -3,7 +3,7 @@ use std::io::{self, BufRead};
 use std::path::Path;
 
 use clap::Parser;
-use print_job::{OrderRule, PageList, PrintJob};
+use print_job::{OrderRule, OrderRuleSet, PageList, PrintJob};
 use thiserror::Error;
 
 mod print_job;
@@ -50,8 +50,9 @@ pub fn run(options: CliOptions) -> Result<usize, ApplicationError> {
         }
     }
 
-    let print_job = PrintJob::new(order_rules, page_number_lists);
-
+    let rule_set = OrderRuleSet::new(order_rules);
+    let print_job = PrintJob::new(rule_set, page_number_lists);
+    
     match options.part {
         1 => run_part1(&print_job),
         2 => run_part2(),
