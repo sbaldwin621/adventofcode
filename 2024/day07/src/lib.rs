@@ -37,7 +37,9 @@ pub fn run(options: CliOptions) -> Result<u64, ApplicationError> {
 }
 
 fn run_part1(calibration_set: &UnsolvedCalibrationSet) -> Result<u64, ApplicationError> {
-    !unimplemented!()
+    let score = calibration_set.calculate_score();
+
+    Ok(score)
 }
 
 fn run_part2() -> Result<u64, ApplicationError> {
