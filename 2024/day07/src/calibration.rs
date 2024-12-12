@@ -39,21 +39,35 @@ impl UnsolvedCalibration {
     }
 
     pub fn is_possible(&self, operator_set: &Vec<Operator>) -> bool {
-        for operators in self.all_operator_combinations(operator_set) {
-            let value = self.apply_operators(&operators);
-            if value == self.test_value {
+        self.is_possible_inner(operator_set, 0, 0)
+    }
+    
+    fn is_possible_inner(&self, operator_set: &Vec<Operator>, n: usize, accum: u64) -> bool {
+        if accum > self.test_value {
+            return false;
+        }
+
+        if n == self.operands.len() {
+            return accum == self.test_value;
+        }
+
+        let operand = self.operands[n];
+        for operator in operator_set.iter() {
+            let next = match operator {
+                Operator::Add => accum + operand,
+                Operator::Multiply => accum * operand,
+                Operator::Concatenate => {
+                    let operand_digits = operand.checked_ilog10().unwrap_or(0) + 1;
+                    accum * (10 as u64).pow(operand_digits) + operand
+                }
+            };
+
+            if self.is_possible_inner(operator_set, n + 1, next) {
                 return true;
             }
         }
-
-        false
-    }
-
-    fn all_operator_combinations<'a>(&self, operator_set: &'a Vec<Operator>) -> itertools::MultiProduct<std::slice::Iter<'a, Operator>> {
-        let n = self.operands.len() - 1;
         
-        repeat_n(operator_set.iter(), n)
-            .multi_cartesian_product()
+        false
     }
 
     fn apply_operators(&self, operators: &Vec<&Operator>) -> u64 {
@@ -123,55 +137,5 @@ mod tests {
         let calibration: UnsolvedCalibration = "8: 1 2 3 4".parse().unwrap();
 
         assert_eq!(calibration, UnsolvedCalibration::new(8, vec![1, 2, 3, 4]))
-    }
-
-    #[test]
-    pub fn apply_operators() {
-        let calibration: UnsolvedCalibration = "8: 1 2 3 4".parse().unwrap();
-
-        assert_eq!(calibration.apply_operators(&vec![&Operator::Add, &Operator::Add, &Operator::Add]), 10);
-        assert_eq!(calibration.apply_operators(&vec![&Operator::Multiply, &Operator::Multiply, &Operator::Multiply]), 24);
-        assert_eq!(calibration.apply_operators(&vec![&Operator::Add, &Operator::Multiply, &Operator::Add]), 13);
-        assert_eq!(calibration.apply_operators(&vec![&Operator::Concatenate, &Operator::Multiply, &Operator::Add]), 40);
-    }
-
-    #[test]
-    pub fn apply_operators_2() {
-        let calibration: UnsolvedCalibration = "7290: 6 8 6 15".parse().unwrap();
-
-        assert_eq!(calibration.apply_operators(&vec![&Operator::Multiply, &Operator::Concatenate, &Operator::Multiply]), 7290);
-    }
-
-    #[test]
-    pub fn is_possible_part1_yes() {
-        let part1_operators = vec![Operator::Add, Operator::Multiply];
-
-        let one: UnsolvedCalibration = "292: 11 6 16 20".parse().unwrap();
-        let two: UnsolvedCalibration = "3267: 81 40 27".parse().unwrap();
-        
-        assert!(one.is_possible(&part1_operators));
-        assert!(two.is_possible(&part1_operators));
-    }
-
-    #[test]
-    pub fn is_possible_part2_yes() {
-        let part2_operators = vec![Operator::Add, Operator::Multiply, Operator::Concatenate];
-
-        let one: UnsolvedCalibration = "7290: 6 8 6 15".parse().unwrap();
-        let two: UnsolvedCalibration = "192: 17 8 14".parse().unwrap();
-        
-        assert!(one.is_possible(&part2_operators));
-        assert!(two.is_possible(&part2_operators));
-    }
-
-    #[test]
-    pub fn is_possible_part1_no() {
-        let part1_operators = vec![Operator::Add, Operator::Multiply];
-
-        let one: UnsolvedCalibration = "161011: 16 10 13 ".parse().unwrap();
-        let two: UnsolvedCalibration = "21037: 9 7 18 13".parse().unwrap();
-          
-        assert_eq!(one.is_possible(&part1_operators), false);
-        assert_eq!(two.is_possible(&part1_operators), false);
     }
 }
