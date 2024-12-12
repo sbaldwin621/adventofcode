@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-use calibration::{UnsolvedCalibration, UnsolvedCalibrationParseError, UnsolvedCalibrationSet};
+use calibration::{Operator, UnsolvedCalibration, UnsolvedCalibrationParseError, UnsolvedCalibrationSet};
 use clap::Parser;
 use thiserror::Error;
 
@@ -31,19 +31,23 @@ pub fn run(options: CliOptions) -> Result<u64, ApplicationError> {
 
     match options.part {
         1 => run_part1(&calibration_set),
-        2 => run_part2(),
+        2 => run_part2(&calibration_set),
         _ => Err(ApplicationError::UnknownPart)
     }
 }
 
 fn run_part1(calibration_set: &UnsolvedCalibrationSet) -> Result<u64, ApplicationError> {
-    let score = calibration_set.calculate_score();
+    let part1_operators = vec![Operator::Add, Operator::Multiply];
+    let score = calibration_set.calculate_score(&part1_operators);
 
     Ok(score)
 }
 
-fn run_part2() -> Result<u64, ApplicationError> {
-    !unimplemented!()
+fn run_part2(calibration_set: &UnsolvedCalibrationSet) -> Result<u64, ApplicationError> {
+    let part2_operators = vec![Operator::Add, Operator::Multiply, Operator::Concatenate];
+    let score = calibration_set.calculate_score(&part2_operators);
+
+    Ok(score)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
