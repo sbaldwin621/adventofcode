@@ -22,7 +22,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     let mut disk_map: DiskMap = line.parse()?;
 
     let result = match options.part {
-        1 => run_part1(),
+        1 => run_part1(&mut disk_map),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
     }?;
@@ -30,11 +30,13 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1() -> Result<u32, ApplicationError> {
-    todo!()
+fn run_part1(disk_map: &mut DiskMap) -> Result<usize, ApplicationError> {
+    disk_map.compact();
+    
+    Ok(disk_map.checksum())
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<usize, ApplicationError> {
     todo!()
 }
 

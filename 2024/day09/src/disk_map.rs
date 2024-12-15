@@ -39,6 +39,20 @@ impl DiskMap {
             }
         }
     }
+
+    pub fn checksum(&self) -> usize {
+        let mut checksum = 0;
+
+        for (i, block) in self.blocks.iter().enumerate() {
+            if let Some(file_id) = block {
+                let file_id = *file_id;
+
+                checksum += file_id * i;
+            }
+        }
+
+        checksum
+    }
 }
 
 impl FromStr for DiskMap {
@@ -72,8 +86,6 @@ impl FromStr for DiskMap {
                 }
             }
         }
-
-        println!("{:?}", blocks);
 
         Ok(DiskMap::new(blocks))
     }
@@ -119,7 +131,6 @@ mod tests {
         disk_map.compact();
 
         // 0099811188827773336446555566..............
-
         assert_eq!(disk_map.blocks, vec![
             Some(0), Some(0),
             Some(9), Some(9),
@@ -136,5 +147,14 @@ mod tests {
             Some(6), Some(6),
             None, None, None, None, None, None, None, None, None, None, None, None, None, None
         ]);
+    }
+
+    #[test]
+    pub fn checksum() {
+        let mut disk_map: DiskMap = "2333133121414131402".parse().unwrap();
+
+        disk_map.compact();
+
+        assert_eq!(disk_map.checksum(), 1928);
     }
 }
