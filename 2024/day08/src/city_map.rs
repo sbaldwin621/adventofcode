@@ -62,46 +62,87 @@ impl CityMap {
         CityMap { width, height, antennas_by_symbol }
     }
 
-    pub fn count_antinodes_within_map(&self) -> u32 {
-        let antinodes = self.get_antinodes();
+    pub fn count_antinodes_within_map_part1(&self) -> usize {
+        let antinodes = self.get_antinodes_part1();
 
-        let mut score = 0;
-
-        let width: i32 = self.width.try_into().unwrap();
-        let height: i32 = self.height.try_into().unwrap();
-
-        for Point(x, y) in antinodes.iter() {
-            let x = *x;
-            let y = *y;
-
-            if x >= 0 && x < width && y >= 0 && y < height {
-                score += 1;
-            }
-        }
-
-        score
+        antinodes.len()
     }
 
+    pub fn count_antinodes_within_map_part2(&self) -> usize {
+        let antinodes = self.get_antinodes_part2();
 
-    fn get_antinodes(&self) -> HashSet<Point> {
+        antinodes.len()
+    }
+
+    fn get_antinodes_part1(&self) -> HashSet<Point> {
         let mut antinodes = HashSet::new();
 
-        for (symbol, points) in self.antennas_by_symbol.iter() {
+        for (_, points) in self.antennas_by_symbol.iter() {
             for (i, point) in points.iter().enumerate() {
                 for other in points.iter().skip(i + 1) {
                     let Point(x, y) = other.subtract(point);
-
-                    let antinode_one = Point(point.0 - x, point.1 - y);
-                    let antinode_two = Point(other.0 + x, other.1 + y);
                     
-                    antinodes.insert(antinode_one);
-                    antinodes.insert(antinode_two);
-
-                    // println!("{:?} {:?}+{:?}: {:?}, {:?}", symbol, point, other, antinode_one, antinode_two)
+                    let before_antinode = Point(point.0 - x, point.1 - y);
+                    if self.is_point_in_map(before_antinode) {
+                        antinodes.insert(before_antinode);
+                    }
+                    
+                    let after_antinode = Point(other.0 + x, other.1 + y);
+                    if self.is_point_in_map(after_antinode) {
+                        antinodes.insert(after_antinode);
+                    }
                 }
             }
         }
 
         antinodes
+    }
+
+    fn get_antinodes_part2(&self) -> HashSet<Point> {
+        let mut antinodes = HashSet::new();
+
+        for (_, points) in self.antennas_by_symbol.iter() {
+            for (i, point) in points.iter().enumerate() {
+                for other in points.iter().skip(i + 1) {
+                    let Point(x, y) = other.subtract(point);
+                    
+                    antinodes.insert(*point);
+                    antinodes.insert(*other);
+
+                    for n in 1..=usize::MAX {
+                        let n: i32 = n.try_into().unwrap();
+
+                        let antinode = Point(point.0 - x * n, point.1 - y * n);
+                        if self.is_point_in_map(antinode) {
+                            antinodes.insert(antinode);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    for n in 1..=usize::MAX {
+                        let n: i32 = n.try_into().unwrap();
+
+                        let antinode = Point(other.0 + x * n, other.1 + y * n);
+                        if self.is_point_in_map(antinode) {
+                            antinodes.insert(antinode);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        antinodes
+    }
+
+    fn is_point_in_map(&self, point: Point) -> bool {
+        let width: i32 = self.width.try_into().unwrap();
+        let height: i32 = self.height.try_into().unwrap();
+
+        let Point(x, y) = point;
+
+        x >= 0 && x < width && y >= 0 && y < height
     }
 }

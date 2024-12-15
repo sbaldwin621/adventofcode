@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::usize;
 
 use city_map::{CityMap, CityMapBuilder};
 use clap::Parser;
@@ -29,19 +30,19 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     
     let result = match options.part {
         1 => run_part1(city_map),
-        2 => run_part2(),
+        2 => run_part2(city_map),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
     Ok(result.to_string())
 }
 
-fn run_part1(city_map: CityMap) -> Result<u32, ApplicationError> {
-    Ok(city_map.count_antinodes_within_map())
+fn run_part1(city_map: CityMap) -> Result<usize, ApplicationError> {
+    Ok(city_map.count_antinodes_within_map_part1())
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
-    todo!()
+fn run_part2(city_map: CityMap) -> Result<usize, ApplicationError> {
+    Ok(city_map.count_antinodes_within_map_part2())
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
