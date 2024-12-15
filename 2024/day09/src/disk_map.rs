@@ -40,6 +40,53 @@ impl DiskMap {
         }
     }
 
+    pub fn compact_without_fragmenting(&mut self) {
+        let mut i = self.blocks.len() - 1;
+        while i > 0 {
+            let block = self.blocks[i];
+            if let Some(file_id) = block {
+                let mut start_of_block = i;
+                for n in (0..i).rev() {
+                    if self.blocks[n] != block {
+                        start_of_block = n + 1;
+                        break;
+                    }
+                }
+                
+                let length = i - start_of_block + 1;
+                
+                if let Some(j) = self.find_empty_space(length) {
+                    // Only move files to the left
+                    if j < i {
+                        for n in 0..length {
+                            self.blocks[j + n] = Some(file_id);
+                            self.blocks[i - n] = None;
+                        }
+                    }
+                }
+
+                i = start_of_block - 1;
+            } else {
+                i -= 1;
+            }
+        }
+    }
+
+    fn find_empty_space(&self, length: usize) -> Option<usize> {
+        let mut i = 0;
+        loop {
+            if i + length >= self.blocks.len() {
+                return None;
+            }
+
+            if self.blocks.iter().skip(i).take(length).all(|block| block.is_none()) {
+                return Some(i);
+            }
+
+            i += 1;
+        }
+    }
+
     pub fn checksum(&self) -> usize {
         let mut checksum = 0;
 
@@ -148,6 +195,34 @@ mod tests {
             None, None, None, None, None, None, None, None, None, None, None, None, None, None
         ]);
     }
+
+    #[test]
+    pub fn compacts_without_fragmenting() {
+        let mut disk_map: DiskMap = "2333133121414131402".parse().unwrap();
+
+        disk_map.compact_without_fragmenting();
+
+        // 00992111777.44.333....5555.6666.....8888..
+        assert_eq!(disk_map.blocks, vec![
+            Some(0), Some(0),
+            Some(9), Some(9),
+            Some(2),
+            Some(1), Some(1), Some(1),
+            Some(7), Some(7), Some(7),
+            None,
+            Some(4), Some(4),
+            None,
+            Some(3), Some(3), Some(3),
+            None, None, None, None,
+            Some(5), Some(5), Some(5), Some(5),
+            None,
+            Some(6), Some(6), Some(6), Some(6),
+            None, None, None, None, None,
+            Some(8), Some(8), Some(8), Some(8),
+            None, None
+        ]);
+    }
+
 
     #[test]
     pub fn checksum() {

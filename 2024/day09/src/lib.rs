@@ -23,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&mut disk_map),
-        2 => run_part2(),
+        2 => run_part2(&mut disk_map),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -32,12 +32,14 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(disk_map: &mut DiskMap) -> Result<usize, ApplicationError> {
     disk_map.compact();
-    
+
     Ok(disk_map.checksum())
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(disk_map: &mut DiskMap) -> Result<usize, ApplicationError> {
+    disk_map.compact_without_fragmenting();
+    
+    Ok(disk_map.checksum())
 }
 
 #[derive(Debug, Error)]
