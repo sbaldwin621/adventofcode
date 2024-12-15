@@ -25,7 +25,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&map),
-        2 => run_part2(),
+        2 => run_part2(&map),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -38,8 +38,10 @@ fn run_part1(map: &TopographicMap) -> Result<usize, ApplicationError> {
     Ok(score)
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(map: &TopographicMap) -> Result<usize, ApplicationError> {
+    let rating = map.rating();
+
+    Ok(rating)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
