@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::str::FromStr;
 
 use thiserror::Error;
@@ -9,6 +10,34 @@ pub struct DiskMap {
 impl DiskMap {
     pub fn new(blocks: Vec<Option<usize>>) -> DiskMap {
         DiskMap { blocks }
+    }
+
+    pub fn compact(&mut self) {
+        let mut empty_blocks = VecDeque::new();
+        for (i, block) in self.blocks.iter().enumerate() {
+            if let None = block {
+                empty_blocks.push_back(i);
+            }
+        }
+
+        for i in (0..self.blocks.len()).rev() {
+            let block = self.blocks[i];
+            if let Some(file_id) = block {
+                if let Some(j) = empty_blocks.pop_front() {
+                    // Never move files to the right
+                    if j > i {
+                        break;
+                    }
+
+                    self.blocks[j] = Some(file_id);
+                    self.blocks[i] = None;
+                }
+
+                if empty_blocks.len() == 0 {
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -80,6 +109,32 @@ mod tests {
             None,
             Some(8), Some(8), Some(8), Some(8),
             Some(9), Some(9)    
+        ]);
+    }
+
+    #[test]
+    pub fn compacts() {
+        let mut disk_map: DiskMap = "2333133121414131402".parse().unwrap();
+
+        disk_map.compact();
+
+        // 0099811188827773336446555566..............
+
+        assert_eq!(disk_map.blocks, vec![
+            Some(0), Some(0),
+            Some(9), Some(9),
+            Some(8),
+            Some(1), Some(1), Some(1),
+            Some(8), Some(8), Some(8),
+            Some(2),
+            Some(7), Some(7), Some(7), 
+            Some(3), Some(3), Some(3),
+            Some(6),
+            Some(4), Some(4),
+            Some(6), 
+            Some(5), Some(5), Some(5), Some(5),
+            Some(6), Some(6),
+            None, None, None, None, None, None, None, None, None, None, None, None, None, None
         ]);
     }
 }
