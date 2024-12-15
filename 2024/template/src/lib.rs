@@ -11,7 +11,7 @@ pub struct CliOptions {
     filename: std::path::PathBuf
 }
 
-pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
+pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     let filename = options.filename;
 
     let lines = read_lines(filename)?;
@@ -19,19 +19,21 @@ pub fn run(options: CliOptions) -> Result<u32, ApplicationError> {
         // do something with lines
     }
 
-    match options.part {
+    let result = match options.part {
         1 => run_part1(),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
-    }
+    }?;
+    
+    Ok(result.to_string())
 }
 
 fn run_part1() -> Result<u32, ApplicationError> {
-    !unimplemented!()
+    todo!()
 }
 
 fn run_part2() -> Result<u32, ApplicationError> {
-    !unimplemented!()
+    todo!()
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
