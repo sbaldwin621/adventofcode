@@ -31,11 +31,19 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(stone_line: &mut StoneLine) -> Result<usize, ApplicationError> {
-    Ok(stone_line.simulate(25))
+    for _ in 0..25 {
+        stone_line.blink();
+    }
+
+    Ok(stone_line.score())
 }
 
 fn run_part2(stone_line: &mut StoneLine) -> Result<usize, ApplicationError> {
-    Ok(stone_line.simulate(75))
+    for _ in 0..75 {
+        stone_line.blink();
+    }
+
+    Ok(stone_line.score())
 }
 
 #[derive(Debug, Error)]
