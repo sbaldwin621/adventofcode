@@ -23,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&mut stone_line),
-        2 => run_part2(),
+        2 => run_part2(&mut stone_line),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -31,15 +31,11 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(stone_line: &mut StoneLine) -> Result<usize, ApplicationError> {
-    for _ in 0..25 {
-        stone_line.blink();
-    }
-
-    Ok(stone_line.len())
+    Ok(stone_line.simulate(25))
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(stone_line: &mut StoneLine) -> Result<usize, ApplicationError> {
+    Ok(stone_line.simulate(75))
 }
 
 #[derive(Debug, Error)]
