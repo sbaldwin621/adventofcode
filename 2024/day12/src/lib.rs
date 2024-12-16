@@ -27,7 +27,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&garden_map),
-        2 => run_part2(),
+        2 => run_part2(&garden_map),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -36,13 +36,16 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(garden_map: &GardenMap) -> Result<usize, ApplicationError> {
     let mut region_finder = RegionFinder::new(&garden_map);
-    let price = region_finder.walk();
+    let price = region_finder.calculate_fence_prices();
 
-    Ok(price)
+    Ok(price.total_price())
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(garden_map: &GardenMap) -> Result<usize, ApplicationError> {
+    let mut region_finder = RegionFinder::new(&garden_map);
+    let price = region_finder.calculate_fence_prices();
+
+    Ok(price.discount_price())
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
