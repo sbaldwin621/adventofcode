@@ -61,7 +61,7 @@ impl<'a> RegionFinder<'a> {
     }
 
     pub fn walk(&mut self) -> usize {
-        let mut regions: HashMap<usize, Vec<(i32, i32, char)>> = HashMap::new();
+        let mut regions: HashMap<usize, Region> = HashMap::new();
         let mut visited = HashSet::new();
         let mut walkers = VecDeque::new();
         
@@ -80,15 +80,18 @@ impl<'a> RegionFinder<'a> {
         loop {
             if let Some((walker_id, x, y, plot)) = walkers.pop_front() {
                 if visited.insert((x, y)) {
-                    regions.entry(walker_id)
-                        .and_modify(|e| e.push((x, y, plot)))
-                        .or_insert(vec![(x, y, plot)]);
-                    
+                    let mut region = regions.entry(walker_id).or_insert_with(|| Region::new());
+                    region.add_plot(x, y);
+
                     for (next_x, next_y) in vec![(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)] {
                         if let Some(next_plot) = self.garden_map.plot_at(next_x, next_y) {
                             if next_plot == plot {
                                 walkers.push_front((walker_id, next_x, next_y, next_plot))
+                            } else {
+                                region.add_edge();
                             }
+                        } else {
+                            region.add_edge();
                         }
                     }
                 }
@@ -98,26 +101,51 @@ impl<'a> RegionFinder<'a> {
         }
 
         let mut total_price = 0;
+        
         for (_, region) in regions {
-            let mut perimeter = 0;
-            for (x, y, plot) in region.iter().copied() {
-                for (next_x, next_y) in vec![(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)] {
-                    if let Some(next_plot) = self.garden_map.plot_at(next_x, next_y) {
-                        if next_plot != plot {
-                            perimeter += 1;
-                        }
-                    } else {
-                        perimeter += 1;
-                    }
-                }   
-            }
-            
-            let area = region.len();
+            let perimeter = region.perimeter();            
+            let area = region.area();
             let region_price = perimeter * area;
 
             total_price += region_price;
         }
 
         total_price
+    }
+}
+
+struct Region {
+    plots: Vec<(i32, i32)>,
+    edges: usize,
+    corners: usize
+}
+
+impl Region {
+    pub fn new() -> Region {
+        let plots = vec![];
+        let edges = 0;
+        let corners = 0;
+
+        Region { plots, edges, corners }
+    }
+    
+    pub fn add_plot(&mut self, x: i32, y: i32) {
+        self.plots.push((x, y));
+    }
+    
+    pub fn perimeter(&self) -> usize {
+        self.edges
+    }
+
+    pub fn area(&self) -> usize {
+        self.plots.len()
+    }
+
+    pub fn add_edge(&mut self) {
+        self.edges += 1;
+    }
+
+    pub fn add_corner(&mut self) {
+        self.corners += 1;
     }
 }
