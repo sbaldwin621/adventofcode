@@ -5,10 +5,14 @@ use std::path::Path;
 use clap::Parser;
 use thiserror::Error;
 
+mod robots;
+
 #[derive(Parser)]
 pub struct CliOptions {
     part: u32,
-    filename: std::path::PathBuf
+    filename: std::path::PathBuf,
+    width: u32,
+    height: u32
 }
 
 pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
