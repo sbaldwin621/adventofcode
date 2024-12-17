@@ -3,6 +3,17 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
+pub struct RobotSimulation {
+    robots: Vec<Robot>,
+    arena_size: (i64, i64)
+}
+
+impl RobotSimulation {
+    pub fn new(robots: Vec<Robot>, arena_size: (i64, i64)) -> RobotSimulation {
+        RobotSimulation { robots, arena_size }
+    }
+}
+
 pub struct Robot {
     starting_position: (i64, i64),
     velocity: (i64, i64)
