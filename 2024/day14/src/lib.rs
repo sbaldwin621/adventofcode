@@ -40,25 +40,38 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
         ArenaType::Full => (101, 103)
     };
 
-    let simulation = RobotSimulation::new(robots, arena_size);
+    let mut simulation = RobotSimulation::new(robots, arena_size);
 
     let result = match options.part {
-        1 => run_part1(&simulation),
-        2 => run_part2(),
+        1 => run_part1(&mut simulation),
+        2 => run_part2(&mut simulation),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
     Ok(result.to_string())
 }
 
-fn run_part1(simulation: &RobotSimulation) -> Result<u64, ApplicationError> {
-    let safety_factor = simulation.simulate(100);
+fn run_part1(simulation: &mut RobotSimulation) -> Result<u64, ApplicationError> {
+    simulation.simulate(100);
+
+    let safety_factor = simulation.safety_factor();
 
     Ok(safety_factor)
 }
 
-fn run_part2() -> Result<u64, ApplicationError> {
-    todo!()
+fn run_part2(simulation: &mut RobotSimulation) -> Result<u64, ApplicationError> {
+    for n in 1..=100000 {
+        simulation.simulate(1);
+
+        if simulation.detect_christmas_tree() {
+            println!("possible christmas tree detected! {}", n);
+            simulation.print_map();
+            
+            return Ok(n);
+        }
+    }
+
+    Err(ApplicationError::CouldntFindChristmasTree)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
@@ -74,5 +87,7 @@ pub enum ApplicationError {
     #[error("couldn't read puzzle input: {0}")]
     CouldntReadInput(#[from] io::Error),
     #[error("couldn't parse robot robot: {0}")]
-    CouldntParseRobot(#[from] ParseRobotError)
+    CouldntParseRobot(#[from] ParseRobotError),
+    #[error("couldn't find Christmas tree :(")]
+    CouldntFindChristmasTree
 }

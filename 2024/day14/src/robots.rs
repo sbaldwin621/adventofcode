@@ -14,11 +14,10 @@ impl RobotSimulation {
         RobotSimulation { robots, arena_size }
     }
 
-    pub fn simulate(&self, seconds: i64) -> u64 {
+    pub fn simulate(&mut self, seconds: i64) {
         let (arena_width, arena_height) = self.arena_size;
 
-        let mut new_robots = vec![];
-        for robot in self.robots.iter() {
+        for robot in self.robots.iter_mut() {
             let (pos_x, pos_y) = robot.position;
             let (vel_x, vel_y) = robot.velocity;
 
@@ -32,17 +31,19 @@ impl RobotSimulation {
                 new_y = arena_height + new_y;
             }
 
-            let new_robot = robot.with_position((new_x, new_y));
-
-            new_robots.push(new_robot);
+            *robot = robot.with_position((new_x, new_y));
         }
+    }
+
+    pub fn safety_factor(&self) -> u64 {
+        let (arena_width, arena_height) = self.arena_size;
 
         let mut nw_count = 0;
         let mut ne_count = 0;
         let mut se_count = 0;
         let mut sw_count = 0;
 
-        for robot in new_robots.iter() {
+        for robot in self.robots.iter() {
             let (x, y) = robot.position;
 
             // Northwest quadrant
@@ -66,34 +67,62 @@ impl RobotSimulation {
             }
         }
 
-        println!("after:");
-        print_robot_map(&new_robots, self.arena_size);
-
-        println!("{} {}", arena_width / 2, arena_height / 2);
-
         nw_count * ne_count * se_count * sw_count
     }
-}
 
-fn print_robot_map(robots: &Vec<Robot>, arena_size: (i64, i64)) {
-    let mut arena = HashMap::new();
+    pub fn print_map(&self) {
+        let (arena_width, arena_height) = self.arena_size;
 
-    for robot in robots.iter() {
-        arena.entry(robot.position)
-            .and_modify(|c| *c += 1)
-            .or_insert(1);
+        let mut arena = HashMap::new();
+
+        for robot in self.robots.iter() {
+            arena.entry(robot.position)
+                .and_modify(|c| *c += 1)
+                .or_insert(1);
+        }
+
+        for y in 0..arena_height {
+            for x in 0..arena_width {
+                if let Some(count) = arena.get(&(x, y)) {
+                    print!("{}", count);
+                } else {
+                    print!(".");
+                }
+            }
+
+            println!();
+        }
     }
 
-    for y in 0..arena_size.1 {
-        for x in 0..arena_size.0 {
-            if let Some(count) = arena.get(&(x, y)) {
-                print!("{}", count);
-            } else {
-                print!(".");
+    pub fn detect_christmas_tree(&self) -> bool {
+        let (arena_width, arena_height) = self.arena_size;
+
+        let mut arena = HashMap::new();
+
+        for robot in self.robots.iter() {
+            arena.entry(robot.position)
+                .and_modify(|c| *c += 1)
+                .or_insert(1);
+        }
+
+        let mut robots_in_a_row = 0;
+
+        for y in 0..arena_height {
+            robots_in_a_row = 0;
+            for x in 0..arena_width {
+                if let Some(count) = arena.get(&(x, y)) {
+                    robots_in_a_row += 1;
+
+                    if robots_in_a_row > 10 {
+                        return true;
+                    }
+                } else {
+                    robots_in_a_row = 0;
+                }
             }
         }
 
-        println!();
+        false
     }
 }
 
