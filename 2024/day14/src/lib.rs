@@ -51,11 +51,13 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(simulation: &RobotSimulation) -> Result<u32, ApplicationError> {
-    todo!()
+fn run_part1(simulation: &RobotSimulation) -> Result<u64, ApplicationError> {
+    let safety_factor = simulation.simulate(100);
+
+    Ok(safety_factor)
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<u64, ApplicationError> {
     todo!()
 }
 
