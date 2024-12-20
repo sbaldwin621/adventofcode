@@ -1,6 +1,5 @@
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
+use std::fs;
+use std::io;
 
 use clap::Parser;
 use thiserror::Error;
@@ -13,12 +12,8 @@ pub struct CliOptions {
 
 pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     let filename = options.filename;
-
-    let lines = read_lines(filename)?;
-    for _line in lines {
-        // do something with lines
-    }
-
+    let _puzzle_input = fs::read_to_string(filename)?;
+    
     let result = match options.part {
         1 => run_part1(),
         2 => run_part2(),
@@ -34,12 +29,6 @@ fn run_part1() -> Result<u32, ApplicationError> {
 
 fn run_part2() -> Result<u32, ApplicationError> {
     todo!()
-}
-
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 #[derive(Debug, Error)]
