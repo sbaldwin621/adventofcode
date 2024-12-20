@@ -34,7 +34,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 fn run_part1(maze: &Maze) -> Result<u32, ApplicationError> {
     let mut simulation = MazeSimulation::new(&maze);
     let best_score = simulation.simulate().expect("didn't find solution");
-
+    
     Ok(best_score)
 }
 

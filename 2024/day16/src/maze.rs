@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use thiserror::Error;
@@ -120,35 +120,41 @@ impl<'a> MazeSimulation<'a> {
     }
 
     pub fn simulate(&mut self) -> Option<u32> {
-        let mut walkers = vec![(self.maze.start_pos, Direction::East, 0)];
+        let mut completed_walkers = vec![];
+        let mut walkers = vec![(self.maze.start_pos, Direction::East, 0, vec![self.maze.start_pos])];
         
         while walkers.len() > 0 {
             let mut next_walkers = vec![];
 
-            for (pos, facing, score) in walkers {
-                if pos == self.maze.end_pos {
+            for walker in walkers {
+                if walker.0 == self.maze.end_pos {
+                    completed_walkers.push(walker);
                     continue;
                 }
 
+                let (pos, facing, score, path) = walker;
                 for &direction in DIRECTIONS {
-                    let next_pos = pos.move_one(direction);
                     if direction != facing.opposite() {
+                        let next_pos = pos.move_one(direction);
+                        
                         let cost = if direction == facing {
                             1
                         } else {
                             1001
                         };
-
                         let next_score = score + cost;
+
                         if let Tile::Floor = self.maze.tile_at(next_pos) {
-                            if let Some(&best_score) = self.best_scores.get(&next_pos) {
-                                if score < best_score {
-                                    self.best_scores.insert(next_pos, next_score);
-                                    next_walkers.push((next_pos, direction, next_score));
-                                }
-                            } else {
-                                self.best_scores.insert(next_pos, score);
-                                next_walkers.push((next_pos, direction, next_score));
+                            let is_better_score = self.best_scores.get(&next_pos)
+                                .map_or(true, |v| score <= *v);
+
+                            if is_better_score {
+                                self.best_scores.insert(next_pos, next_score);
+
+                                let mut next_path = path.clone();
+                                next_path.push(next_pos);
+
+                                next_walkers.push((next_pos, direction, next_score, next_path));
                             }
                         }
                     }
@@ -158,7 +164,48 @@ impl<'a> MazeSimulation<'a> {
             walkers = next_walkers;
         }
 
-        self.best_scores.get(&self.maze.end_pos).cloned()
+        let mut all_best_paths = HashSet::new();
+        
+        if let Some(best_score) = self.best_scores.get(&self.maze.end_pos).cloned() {
+            for (_, _, score, path) in completed_walkers {
+                if score == best_score {
+                    for pos in path {
+                        all_best_paths.insert(pos);
+                    }
+                }
+            }
+        }
+
+        self.print(&all_best_paths);
+
+        println!("all best paths: {}", all_best_paths.len());
+
+        Some(0)
+    }
+
+    fn print(&self, all_best_paths: &HashSet<Position>) {
+        for y in 0..self.maze.height {
+            for x in 0..self.maze.width {
+                let pos = Position(x, y);
+                let char =
+                    if all_best_paths.contains(&pos) {
+                        'O'
+                    } else if pos == self.maze.start_pos {
+                        'S'
+                    } else if pos == self.maze.end_pos {
+                        'E'
+                    } else {
+                        match self.maze.tile_at(Position(x, y)) {
+                            Tile::Wall => '#',
+                            Tile::Floor => '.',
+                        }                        
+                    };
+                
+                print!("{}", char);
+            }
+
+            println!();
+        }
     }
 }
 
