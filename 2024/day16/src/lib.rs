@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 
 use clap::Parser;
+use maze::MazeSimulation;
 use thiserror::Error;
 
 mod maze;
@@ -22,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     maze.print();
     
     let result = match options.part {
-        1 => run_part1(),
+        1 => run_part1(&maze),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
     }?;
@@ -30,8 +31,11 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1() -> Result<u32, ApplicationError> {
-    todo!()
+fn run_part1(maze: &Maze) -> Result<u32, ApplicationError> {
+    let mut simulation = MazeSimulation::new(&maze);
+    let best_score = simulation.simulate().expect("didn't find solution");
+
+    Ok(best_score)
 }
 
 fn run_part2() -> Result<u32, ApplicationError> {
