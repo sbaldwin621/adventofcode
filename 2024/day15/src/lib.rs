@@ -23,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&spec),
-        2 => run_part2(),
+        2 => run_part2(&spec),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -32,18 +32,38 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(spec: &WarehouseSimulationSpec) -> Result<i32, ApplicationError> {
     let mut simulation = WarehouseSimulation::from_spec(spec);
-    
+
+    println!("start:");
+    simulation.print();
+
     for instruction in spec.instructions().iter() {
         simulation.process_instruction(*instruction);
     }
+
+    println!("end:");
+    simulation.print();
 
     let score = simulation.score();
 
     Ok(score)
 }
 
-fn run_part2() -> Result<i32, ApplicationError> {
-    todo!()
+fn run_part2(spec: &WarehouseSimulationSpec) -> Result<i32, ApplicationError> {
+    let mut simulation = WarehouseSimulation::from_spec_doubled(spec);
+
+    println!("start:");
+    simulation.print();
+
+    for (n, instruction) in spec.instructions().iter().enumerate() {
+        simulation.process_instruction(*instruction);
+    }
+
+    println!("end:");
+    simulation.print();
+
+    let score = simulation.score();
+
+    Ok(score)
 }
 
 #[derive(Debug, Error)]

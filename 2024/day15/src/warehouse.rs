@@ -153,6 +153,39 @@ impl WarehouseSimulation {
         WarehouseSimulation { robot_pos, entities, width, height }
     }
 
+    pub fn from_spec_doubled(spec: &WarehouseSimulationSpec) -> WarehouseSimulation {
+        let mut robot_pos = (0, 0);
+        let mut entities = HashMap::new();
+
+        let mut width: i32 = 0;
+        let mut height: i32 = 0;
+
+        for (y, row) in spec.rows.iter().enumerate() {
+            let y: i32 = y.try_into().unwrap();
+            height = y + 1;
+
+            for (x, tile) in row.iter().enumerate() {
+                let x: i32 = (x * 2).try_into().unwrap();
+                width = x + 2;
+
+                match tile {
+                    MapTile::Floor => { },
+                    MapTile::Wall => { 
+                        entities.insert((x, y), Entity::Wall);
+                        entities.insert((x + 1, y), Entity::Wall);
+                    },
+                    MapTile::Box => {
+                        entities.insert((x, y), Entity::LargeBoxLeft);
+                        entities.insert((x + 1, y), Entity::LargeBoxRight);
+                    },
+                    MapTile::Robot => { robot_pos = (x, y); }
+                }
+            }
+        }
+
+        WarehouseSimulation { robot_pos, entities, width, height }
+    }
+
     pub fn process_instruction(&mut self, instruction: Instruction) {
         let current_pos = self.robot_pos;
         let (next_x, next_y) = current_pos.apply_instruction(instruction);
@@ -161,7 +194,7 @@ impl WarehouseSimulation {
             Some(Entity::Wall) => { 
                 // Do nothing
             },
-            Some(Entity::Box) => { 
+            Some(Entity::Box | Entity::LargeBoxLeft | Entity::LargeBoxRight) => {
                 if self.try_push_box(next_x, next_y, instruction) {
                     self.robot_pos = (next_x, next_y);
                 }
@@ -181,8 +214,15 @@ impl WarehouseSimulation {
     }
 
     fn try_push_box(&mut self, x: i32, y: i32, instruction: Instruction) -> bool {
+        match instruction {
+            Instruction::Left | Instruction::Right => self.try_push_box_left_right(x, y, instruction),
+            Instruction::Up | Instruction::Down => self.try_push_box_up_down(x, y, instruction)
+        }
+    }
+
+    fn try_push_box_left_right(&mut self, x: i32, y: i32, instruction: Instruction) -> bool {
         let mut current_pos = (x, y);
-        let mut boxes_to_move = vec![current_pos];
+        let mut entities_to_move = vec![current_pos];
 
         loop {
             let (next_x, next_y) = current_pos.apply_instruction(instruction);
@@ -191,14 +231,23 @@ impl WarehouseSimulation {
                     return false;
                 },
                 Some(Entity::Box) => { 
-                    boxes_to_move.push((next_x, next_y));
+                    entities_to_move.push((next_x, next_y));
+                    current_pos = (next_x, next_y);
+                },
+                Some(Entity::LargeBoxLeft) => {
+                    entities_to_move.push((next_x, next_y));
+                    current_pos = (next_x, next_y);
+                },
+                Some(Entity::LargeBoxRight) => {
+                    entities_to_move.push((next_x, next_y));
                     current_pos = (next_x, next_y);
                 },
                 None => {
-                    while let Some(old_box_pos) = boxes_to_move.pop() {
-                        let new_box_pos = old_box_pos.apply_instruction(instruction);
-                        self.entities.remove(&old_box_pos);
-                        self.entities.insert(new_box_pos, Entity::Box);
+                    while let Some(old_pos) = entities_to_move.pop() {
+                        let new_pos = old_pos.apply_instruction(instruction);
+                        if let Some(entity) = self.entities.remove(&old_pos) {
+                            self.entities.insert(new_pos, entity);
+                        }
                     }
                     return true;
                 }
@@ -206,18 +255,124 @@ impl WarehouseSimulation {
         }
     }
 
+    fn try_push_box_up_down(&mut self, x: i32, y: i32, instruction: Instruction) -> bool {
+        let mut front_edge = match self.entity_at(x, y) {
+            Some(Entity::Wall) => {
+                return false;
+            },
+            Some(Entity::Box) => {
+                vec![(x, y)]
+            },
+            Some(Entity::LargeBoxLeft) => {
+                vec![(x, y), (x + 1, y)]
+            },
+            Some(Entity::LargeBoxRight) => {
+                vec![(x - 1, y), (x, y)]
+            },
+            None => {
+                return true;
+            }
+        };
+        
+        let mut entities_to_move= front_edge.clone();
+
+        let mut entity_detected = true;
+        while entity_detected {
+            entity_detected = false;
+
+            let mut next_front_edge = vec![];
+
+            for pos in front_edge {
+                let (next_x, next_y) = pos.apply_instruction(instruction);
+                match self.entity_at(next_x, next_y) {
+                    Some(Entity::Wall) => { 
+                        // Bail out on first wall encountered
+                        return false;
+                    },
+                    Some(Entity::Box) => { 
+                        entity_detected = true;
+
+                        entities_to_move.push((next_x, next_y));
+                        next_front_edge.push((next_x, next_y));
+                    },
+                    Some(Entity::LargeBoxLeft) => {
+                        entity_detected = true;
+
+                        entities_to_move.push((next_x, next_y));
+                        entities_to_move.push((next_x + 1, next_y));
+                        
+                        next_front_edge.push((next_x, next_y));
+                        next_front_edge.push((next_x + 1, next_y));
+                    },
+                    Some(Entity::LargeBoxRight) => {
+                        entity_detected = true;
+
+                        entities_to_move.push((next_x - 1, next_y));
+                        entities_to_move.push((next_x, next_y));
+                        
+                        next_front_edge.push((next_x - 1, next_y));
+                        next_front_edge.push((next_x, next_y));
+                    },
+                    None => { }
+                }
+            }
+            
+            front_edge = next_front_edge;
+        }
+
+        // No more entities in the way
+        while let Some(old_pos) = entities_to_move.pop() {
+            let new_pos = old_pos.apply_instruction(instruction);
+            if let Some(entity) = self.entities.remove(&old_pos) {
+                self.entities.insert(new_pos, entity);
+            }
+        }
+
+        true
+    }
+
     pub fn score(&self) -> i32 {
         let mut score = 0;
 
         for x in 0..self.width {
             for y in 0..self.height {
-                if let Some(Entity::Box) = self.entity_at(x, y) {
-                    score += y * 100 + x;
+                score += match self.entity_at(x, y) {
+                    Some(Entity::Box | Entity::LargeBoxLeft) => y * 100 + x,
+                    _ => 0
                 }
             }
         }
 
         score
+    }
+
+    pub fn print(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if (x, y) == self.robot_pos {
+                    print!("@");
+                } else {
+                    match self.entity_at(x, y) {
+                        Some(Entity::Wall) => { 
+                            print!("#");
+                        },
+                        Some(Entity::Box) => { 
+                            print!("O");
+                        },
+                        Some(Entity::LargeBoxLeft) => {
+                            print!("[");
+                        },
+                        Some(Entity::LargeBoxRight) => {
+                            print!("]");
+                        },
+                        None => {
+                            print!(".");
+                        }
+                    }
+                }                
+            }
+            println!();
+        }
     }
 }
 
@@ -263,5 +418,7 @@ impl Position for (i32, i32) {
 #[derive(Debug, Clone, Copy)]
 enum Entity {
     Wall,
-    Box
+    Box,
+    LargeBoxLeft,
+    LargeBoxRight
 }
