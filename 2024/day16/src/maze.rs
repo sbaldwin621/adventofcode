@@ -119,7 +119,7 @@ impl<'a> MazeSimulation<'a> {
         MazeSimulation { maze, best_scores }
     }
 
-    pub fn simulate(&mut self) -> Option<u32> {
+    pub fn simulate(&mut self) -> Option<MazeSolution> {
         let mut completed_walkers = vec![];
         let mut walkers = vec![(self.maze.start_pos, Direction::East, 0, vec![self.maze.start_pos])];
         
@@ -176,23 +176,23 @@ impl<'a> MazeSimulation<'a> {
             walkers = next_walkers;
         }
 
-        let mut all_best_paths = HashSet::new();
-        
         if let Some(best_score) = self.best_scores.get(&self.maze.end_pos).cloned() {
+            let mut all_best_path_tiles = HashSet::new();
+            
             for (_, _, score, path) in completed_walkers {
                 if score == best_score {
                     for pos in path {
-                        all_best_paths.insert(pos);
+                        all_best_path_tiles.insert(pos);
                     }
                 }
             }
+        
+            let best_path_tile_count = all_best_path_tiles.len();
+            
+            Some(MazeSolution { best_score, best_path_tile_count })
+        } else {
+            None
         }
-
-        self.print(&all_best_paths);
-
-        println!("all best paths: {}", all_best_paths.len());
-
-        Some(0)
     }
 
     fn print(&self, all_best_paths: &HashSet<Position>) {
@@ -218,6 +218,21 @@ impl<'a> MazeSimulation<'a> {
 
             println!();
         }
+    }
+}
+
+pub struct MazeSolution {
+    best_score: u32,
+    best_path_tile_count: usize
+}
+
+impl MazeSolution {
+    pub fn best_score(&self) -> u32 {
+        self.best_score
+    }
+
+    pub fn best_path_tile_count(&self) -> usize {
+        self.best_path_tile_count
     }
 }
 
