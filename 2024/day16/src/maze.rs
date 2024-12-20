@@ -123,16 +123,21 @@ impl<'a> MazeSimulation<'a> {
         let mut completed_walkers = vec![];
         let mut walkers = vec![(self.maze.start_pos, Direction::East, 0, vec![self.maze.start_pos])];
         
+        let mut best_score = u32::MAX;
+
         while walkers.len() > 0 {
             let mut next_walkers = vec![];
 
-            for walker in walkers {
-                if walker.0 == self.maze.end_pos {
-                    completed_walkers.push(walker);
+            for (pos, facing, score, path) in walkers {
+                if pos == self.maze.end_pos {
+                    if score < best_score {
+                        best_score = score;
+                    }
+
+                    completed_walkers.push((pos, facing, score, path));
                     continue;
                 }
 
-                let (pos, facing, score, path) = walker;
                 for &direction in DIRECTIONS {
                     if direction != facing.opposite() {
                         let next_pos = pos.move_one(direction);
@@ -145,12 +150,19 @@ impl<'a> MazeSimulation<'a> {
                         let next_score = score + cost;
 
                         if let Tile::Floor = self.maze.tile_at(next_pos) {
-                            let is_better_score = self.best_scores.get(&next_pos)
-                                .map_or(true, |v| score <= *v);
+                            let best_score_at_next_pos = self.best_scores.get(&next_pos)
+                                .cloned().unwrap_or(u32::MAX);
 
-                            if is_better_score {
+                            let should_continue = if next_score < best_score_at_next_pos {
                                 self.best_scores.insert(next_pos, next_score);
+                                true
+                            } else if next_score < best_score_at_next_pos.saturating_add(1001) {
+                                true
+                            } else {
+                                false
+                            };
 
+                            if should_continue {
                                 let mut next_path = path.clone();
                                 next_path.push(next_pos);
 
