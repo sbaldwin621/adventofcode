@@ -23,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
         
     let result = match options.part {
         1 => run_part1(&debugger_info),
-        2 => run_part2(),
+        2 => run_part2(&debugger_info),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -36,12 +36,31 @@ fn run_part1(debugger_info: &DebuggerInfo) -> Result<String, ApplicationError> {
 
     let output = emulator.output_buffer();
     let output = output.iter().map(|v| v.to_string()).collect::<Vec<String>>();
-    
+
     Ok(output.join(","))
 }
 
-fn run_part2() -> Result<String, ApplicationError> {
-    todo!()
+fn run_part2(debugger_info: &DebuggerInfo) -> Result<String, ApplicationError> {
+    // let mut low = 0;
+    // let mut high = 10usize.pow(debugger_info.original_program().len().try_into().unwrap());
+
+    for a in 1000000000000000.. {
+        let mut emulator = Emulator::from_debugger_info(debugger_info);
+        *emulator.register_a_mut() = a;
+
+        while emulator.step() { }
+
+        let output = emulator.output_buffer();
+        let output_string = output.iter().map(|v| v.to_string()).collect::<Vec<String>>();
+        
+        println!("{}: {}", a, output_string.join(","));
+
+        if debugger_info.original_program().eq(output) {
+            return Ok(a.to_string());
+        }
+    }
+
+    unreachable!()
 }
 
 #[derive(Debug, Error)]

@@ -9,7 +9,18 @@ pub struct DebuggerInfo {
     register_a: usize,
     register_b: usize,
     register_c: usize,
+    original_program: Vec<usize>,
     program: Vec<Instruction>
+}
+
+impl DebuggerInfo {
+    pub fn original_program(&self) -> &Vec<usize> {
+        &self.original_program
+    }
+
+    pub fn program(&self) -> &Vec<Instruction> {
+        &self.program
+    }
 }
 
 impl FromStr for DebuggerInfo {
@@ -80,17 +91,17 @@ impl FromStr for DebuggerInfo {
         // Skip a line
         lines.next();
 
-        let program_bytes = parse_program_line(lines.next())?;
+        let original_program = parse_program_line(lines.next())?;
 
         let mut program = vec![];
-        for chunk in program_bytes.chunks_exact(2) {
+        for chunk in original_program.chunks_exact(2) {
             if let [opcode, operand] = chunk {
                 let instruction = parse_instruction(*opcode, *operand)?;
                 program.push(instruction);
             }
         }
 
-        Ok(DebuggerInfo { register_a, register_b, register_c, program })
+        Ok(DebuggerInfo { register_a, register_b, register_c, original_program, program })
     }
 }
 
@@ -109,7 +120,7 @@ pub enum ParseDebuggerInfoError {
 }
 
 #[derive(Debug, Clone)]
-enum Instruction {
+pub enum Instruction {
     Adv(ComboOperand),
     Bxl(usize),
     Bst(ComboOperand),
@@ -121,7 +132,7 @@ enum Instruction {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum ComboOperand {
+pub enum ComboOperand {
     Literal(usize),
     RegisterA,
     RegisterB,
@@ -148,6 +159,14 @@ impl Emulator {
         let output_buffer = vec![];
 
         Emulator { register_a, register_b, register_c, program, instruction_counter, output_buffer }
+    }
+
+    pub fn register_a(&self) -> usize {
+        self.register_a
+    }
+
+    pub fn register_a_mut(&mut self) -> &mut usize {
+        &mut self.register_a
     }
 
     pub fn output_buffer(&self) -> &Vec<usize> {
