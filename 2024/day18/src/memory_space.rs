@@ -108,6 +108,14 @@ impl PuzzleInput {
         
         MemorySpace { size, tiles }
     }
+
+    pub fn len(&self) -> usize {
+        self.bytes.len()
+    }
+
+    pub fn get(&self, i: usize) -> Option<&Position> {
+        self.bytes.get(i)
+    }
 }
 
 impl FromStr for PuzzleInput {
