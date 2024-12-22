@@ -116,37 +116,55 @@ impl<'a> MazeSimulation<'a> {
         MazeSimulation { maze }
     }
 
-    pub fn simulate(&mut self, threshold: u32) -> Option<usize> {
+    pub fn simulate(&mut self, threshold: u32, cheat_length: u32) -> Option<usize> {
         let no_cheat_scores = self.simulate_no_cheating();
         let mut cheats = HashMap::new();
 
         for (pos, score) in no_cheat_scores.iter() {
-            for &direction in DIRECTIONS {
-                let next_pos = pos.move_one(direction);
-                
-                if let Tile::Wall = self.maze.tile_at(next_pos) {
-                    let cheat_pos = next_pos.move_one(direction);
-                    if let Tile::Floor = self.maze.tile_at(cheat_pos) {
-                        let next_score = score + 2;
-                        if let Some(score_to_beat) = no_cheat_scores.get(&cheat_pos) {
-                            if next_score < *score_to_beat {
-                                let savings = score_to_beat - next_score;
-                                *cheats.entry(savings).or_insert(0) += 1;
+            let mut visited = HashSet::new();
+            let mut walkers = vec![MazeWalker::new(*pos, *score, cheat_length)];
+
+            while walkers.len() > 0 {
+                let mut next_walkers = vec![];
+
+                for walker in walkers {
+                    let walker_pos = walker.pos();
+                    for &direction in DIRECTIONS {
+                        let next_pos = walker_pos.move_one(direction);
+                        if !visited.contains(&next_pos) {
+                            if let Some(next_walker) = walker.with_move(next_pos) {
+                                if let Tile::Floor = self.maze.tile_at(next_pos) {
+                                    if let Some(next_pos_score) = no_cheat_scores.get(&next_pos) {
+                                        let next_score = next_walker.score();
+                                        if next_score < *next_pos_score {
+                                            let savings = next_pos_score - next_score;
+                                            cheats.insert((*pos, next_pos), savings);
+                                        }
+                                    }
+                                }
+                                    
+                                visited.insert(next_pos);
+                                next_walkers.push(next_walker);
                             }
-                        } else {
-                            return None;
-                        }                        
+                        }
                     }
-                }              
+                }
+
+                walkers = next_walkers;
             }
         }
         
         let mut result = 0;
 
-        let mut cheats: Vec<_> = cheats.iter().collect();
-        cheats.sort_by_key(|c| c.0);
+        let mut cheats_by_time_saved = HashMap::new();
+        for (_, time_saved) in cheats {
+            *cheats_by_time_saved.entry(time_saved).or_insert(0) += 1;
+        }
 
-        for (time_saved, count) in cheats {
+        let mut cheats_by_time_saved: Vec<_> = cheats_by_time_saved.iter().collect();
+        cheats_by_time_saved.sort_by_key(|c| c.0);
+
+        for (time_saved, count) in cheats_by_time_saved {
             println!("{} cheats that save {} picosecond(s)", count, time_saved);
 
             if *time_saved >= threshold {
@@ -159,7 +177,7 @@ impl<'a> MazeSimulation<'a> {
 
     fn simulate_no_cheating(&mut self) -> HashMap<Position, u32> {
         let mut completed_walkers = vec![];
-        let mut walkers = vec![MazeWalker::new(self.maze.start_pos)];
+        let mut walkers = vec![MazeWalker::new(self.maze.start_pos, 0, u32::MAX)];
         
         let mut best_scores = HashMap::new();
         best_scores.insert(self.maze.start_pos, 0);
@@ -187,7 +205,7 @@ impl<'a> MazeSimulation<'a> {
                             
                             if next_score < best_score_at_next_pos {
                                 best_scores.insert( next_pos, next_score);
-                                next_walkers.push(walker.with_move(next_pos));
+                                next_walkers.push(walker.with_move(next_pos).unwrap());
                             }
                         }
                     }
@@ -199,73 +217,36 @@ impl<'a> MazeSimulation<'a> {
 
         best_scores
     }
-
-    fn print(&self, all_best_paths: &HashSet<Position>) {
-        for y in 0..self.maze.height {
-            for x in 0..self.maze.width {
-                let pos = Position(x, y);
-                let char =
-                    if all_best_paths.contains(&pos) {
-                        'O'
-                    } else if pos == self.maze.start_pos {
-                        'S'
-                    } else if pos == self.maze.end_pos {
-                        'E'
-                    } else {
-                        match self.maze.tile_at(Position(x, y)) {
-                            Tile::Wall => '#',
-                            Tile::Floor => '.',
-                        }                        
-                    };
-                
-                print!("{}", char);
-            }
-
-            println!();
-        }
-    }
 }
 
 #[derive(Debug)]
 struct MazeWalker {
     pos: Position,
+    fuel: u32,
     score: u32,
-    cheat: Option<(Position, Position)>,
     visited: HashSet<Position>
 }
 
 impl MazeWalker {
-    pub fn new(pos: Position) -> MazeWalker {
-        let score = 0;
-        let cheat = None;
-        
+    pub fn new(pos: Position, score: u32, fuel: u32) -> MazeWalker {
         let mut visited = HashSet::new();
         visited.insert(pos);
 
-        MazeWalker { pos, score, cheat, visited }
+        MazeWalker { pos, fuel, score, visited }
     }
 
-    pub fn with_move(&self, pos: Position) -> MazeWalker {
-        let mut visited = self.visited.clone();
-        visited.insert(pos);
-
-        let score = self.score + 1;
-        let cheat = self.cheat;
-
-        MazeWalker { pos, score, cheat, visited }
-    }
-
-    pub fn with_cheat(&self, cheat: (Position, Position)) -> MazeWalker {
-        let pos = cheat.1;
-        
-        let mut visited = self.visited.clone();
-        visited.insert(cheat.0);
-        visited.insert(cheat.1);
-
-        let score = self.score + 2;
-        let cheat = Some(cheat);
-        
-        MazeWalker { pos, score, cheat, visited }
+    pub fn with_move(&self, pos: Position) -> Option<MazeWalker> {
+        if self.fuel > 0 {
+            let mut visited = self.visited.clone();
+            visited.insert(pos);
+    
+            let score = self.score + 1;
+            let fuel = self.fuel - 1;
+            
+            Some(MazeWalker { pos, score, fuel, visited })
+        } else {
+            None
+        }        
     }
 
     pub fn pos(&self) -> Position {
@@ -276,32 +257,8 @@ impl MazeWalker {
         self.score
     }
 
-    pub fn cheat(&self) -> &Option<(Position, Position)> {
-        &self.cheat
-    }
-
-    pub fn has_cheated(&self) -> bool {
-        self.cheat.is_some()
-    }
-
     pub fn has_visited(&self, pos: &Position) -> bool {
         self.visited.contains(pos)
-    }
-}
-
-#[derive(Debug)]
-pub struct MazeSolution {
-    best_score: u32,
-    best_path_tile_count: usize
-}
-
-impl MazeSolution {
-    pub fn best_score(&self) -> u32 {
-        self.best_score
-    }
-
-    pub fn best_path_tile_count(&self) -> usize {
-        self.best_path_tile_count
     }
 }
 
@@ -320,35 +277,6 @@ pub enum Direction {
 }
 
 static DIRECTIONS: &[Direction] = &[Direction::North, Direction::East, Direction::South, Direction::West];
-
-impl Direction {
-    pub fn opposite(&self) -> Direction {
-        match self {
-            Direction::North => Direction::South,
-            Direction::East => Direction::West,
-            Direction::South => Direction::North,
-            Direction::West => Direction::East
-        }
-    }
-
-    pub fn rotate_clockwise(&self) -> Direction {
-        match self {
-            Direction::North => Direction::East,
-            Direction::East => Direction::South,
-            Direction::South => Direction::West,
-            Direction::West => Direction::North
-        }
-    }
-
-    pub fn rotate_counterclockwise(&self) -> Direction {
-        match self {
-            Direction::North => Direction::West,
-            Direction::East => Direction::North,
-            Direction::South => Direction::East,
-            Direction::West => Direction::South
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Position(i32, i32);

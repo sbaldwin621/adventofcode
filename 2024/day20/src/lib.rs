@@ -10,8 +10,7 @@ mod maze;
 #[derive(Parser)]
 pub struct CliOptions {
     part: u32,
-    filename: std::path::PathBuf,
-    threshold: u32
+    filename: std::path::PathBuf
 }
 
 pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
@@ -23,7 +22,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     maze.print();
     
     let result = match options.part {
-        1 => run_part1(&maze, options.threshold),
+        1 => run_part1(&maze),
         2 => run_part2(&maze),
         _ => Err(ApplicationError::UnknownPart)
     }?;
@@ -31,15 +30,18 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(maze: &Maze, threshold: u32) -> Result<usize, ApplicationError> {
+fn run_part1(maze: &Maze) -> Result<usize, ApplicationError> {
     let mut simulation = MazeSimulation::new(&maze);
-    let solution = simulation.simulate(threshold).ok_or(ApplicationError::CouldntFindSolution)?;
+    let solution = simulation.simulate(100, 2).ok_or(ApplicationError::CouldntFindSolution)?;
 
     Ok(solution)
 }
 
 fn run_part2(maze: &Maze) -> Result<usize, ApplicationError> {
-    todo!()
+    let mut simulation = MazeSimulation::new(&maze);
+    let solution = simulation.simulate(100, 20).ok_or(ApplicationError::CouldntFindSolution)?;
+
+    Ok(solution)
 }
 
 #[derive(Debug, Error)]
