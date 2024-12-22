@@ -4,54 +4,104 @@ use std::str::FromStr;
 use thiserror::Error;
 
 pub struct TowelSolver<'a> {
-    towels: HashSet<&'a String>,
-    orders: &'a Vec<String>,
-    solved_orders: HashMap<String, bool>
+    towels: HashSet<String>,
+    largest_towel: usize,
+    orders: &'a Vec<String>
 }
 
 impl<'a> TowelSolver<'a> {
-    pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {
-        let mut solved_orders = HashMap::new();
-        for towel in towels.iter() {
-            solved_orders.insert(towel.clone(), true);
-        }
-
-        let towels: HashSet<_> = towels.iter().collect();
+    pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {       
+        let towels: HashSet<_> = towels.iter().cloned().collect();
+        let largest_towel = towels.iter().max_by_key(|t| t.len()).unwrap().len();
         
-        TowelSolver { towels, orders, solved_orders }
+        TowelSolver { towels, largest_towel, orders }
     }
 
-    pub fn solve(&mut self) -> Vec<&'a String> {
+    pub fn solve(&mut self) -> Vec<CompletedOrder> {
         let mut result = vec![];
 
         for order in self.orders.iter() {
-            if self.solve_order(order) {
-                result.push(order);
-            }
+            let combinations = self.solve_order(order);
+            result.push(CompletedOrder { order: order.to_string(), combinations });
         }
 
         result
     }
 
-    fn solve_order(&mut self, order: &str) -> bool {
-        if let Some(answer) = self.solved_orders.get(order) {
-            return *answer;
-        }
+    fn solve_order(&self, order: &str) -> Vec<Vec<String>> {
+        let mut walkers = vec![Walker::new(0, vec![])];
+        
+        let mut completed_paths = vec![];
 
-        if order.len() == 1 {
-            return false;
-        }
+        while walkers.len() > 0 {
+            let mut next_walkers = vec![];
 
-        for n in 1..order.len() {
-            let (left, right) = order.split_at(n);
-            if self.solve_order(left) && self.solve_order(right) {
-                self.solved_orders.insert(order.to_string(), true);
-                return true;
+            for walker in walkers {
+                if walker.i == order.len() {
+                    completed_paths.push(walker.path);
+                    continue;
+                }
+
+                for n in 1..=self.largest_towel {
+                    let i = walker.i;
+                    if i + n > order.len() {
+                        break;
+                    }
+
+                    let potential_towel = &order[i..i+n];
+                    if self.towels.contains(potential_towel) {
+                        let new_walker = walker.add_towel(potential_towel);
+                        next_walkers.push(new_walker);
+                    }
+                }
             }
+
+            println!("{} walkers", next_walkers.len());
+
+            walkers = next_walkers;
         }
 
-        self.solved_orders.insert(order.to_string(), false);
-        return false;
+        completed_paths
+    }    
+}
+
+#[derive(Debug)]
+pub struct CompletedOrder {
+    order: String,
+    combinations: Vec<Vec<String>>
+}
+
+impl CompletedOrder {
+    pub fn order(&self) -> &str {
+        &self.order
+    }
+
+    pub fn combinations(&self) -> &Vec<Vec<String>> {
+        &self.combinations
+    }
+
+    pub fn is_possible(&self) -> bool {
+        self.combinations.len() > 0
+    }
+}
+
+#[derive(Debug, Hash)]
+struct Walker {
+    i: usize,
+    path: Vec<String>
+}
+
+impl Walker {
+    pub fn new(i: usize, path: Vec<String>) -> Walker {
+        Walker { i, path }
+    }
+
+    pub fn add_towel(&self, towel: &str) -> Walker {
+        let i = self.i + towel.len();
+        let mut path = self.path.clone();
+        path.push(towel.to_string());
+        
+        Walker { i, path }
     }
 }
 

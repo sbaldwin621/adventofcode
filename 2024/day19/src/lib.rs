@@ -32,10 +32,15 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 fn run_part1(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
     let mut solver = puzzle_input.to_solver();
 
-    let possible_orders = solver.solve();
-    println!("{:?}", possible_orders);
+    let completed_orders = solver.solve();
+    let count = completed_orders.iter().filter(|o| o.is_possible()).count();
 
-    Ok(possible_orders.len())
+    println!("completed orders:");
+    for order in completed_orders.iter() {
+        println!("{} -> {:?}", order.order(), order.combinations());
+    }
+
+    Ok(count)
 }
 
 fn run_part2() -> Result<usize, ApplicationError> {
