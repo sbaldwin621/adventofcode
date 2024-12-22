@@ -6,14 +6,14 @@ use thiserror::Error;
 pub struct TowelSolver<'a> {
     towels: HashSet<&'a String>,
     orders: &'a Vec<String>,
-    solved_orders: HashMap<String, bool>
+    solved_orders: HashMap<String, Option<Vec<Vec<String>>>>
 }
 
 impl<'a> TowelSolver<'a> {
     pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {
         let mut solved_orders = HashMap::new();
         for towel in towels.iter() {
-            solved_orders.insert(towel.clone(), true);
+            solved_orders.insert(towel.clone(), Some(vec![vec![towel.clone()]]));
         }
 
         let towels: HashSet<_> = towels.iter().collect();
@@ -22,36 +22,56 @@ impl<'a> TowelSolver<'a> {
     }
 
     pub fn solve(&mut self) -> Vec<&'a String> {
-        let mut result = vec![];
+        // let mut result = vec![];
 
         for order in self.orders.iter() {
-            if self.solve_order(order) {
-                result.push(order);
-            }
+            let solutions = self.solve_order(order);
+            println!("{} final: {:?}", order, solutions);
         }
-
-        result
+        
+        todo!()
     }
 
-    fn solve_order(&mut self, order: &str) -> bool {
+    fn solve_order(&mut self, order: &str) -> Option<Vec<Vec<String>>> {
         if let Some(answer) = self.solved_orders.get(order) {
-            return *answer;
+            return answer.clone();
         }
 
         if order.len() == 1 {
-            return false;
+            return None;
         }
+
+        let mut solutions = vec![];
 
         for n in 1..order.len() {
             let (left, right) = order.split_at(n);
-            if self.solve_order(left) && self.solve_order(right) {
-                self.solved_orders.insert(order.to_string(), true);
-                return true;
+
+            println!("{}: {} | {}", order, left, right);
+
+            if let Some(left_solutions) = self.solve_order(left) {
+                if let Some(right_solutions) = self.solve_order(right) {
+                    for left_solution in left_solutions {
+                        for right_solution in right_solutions.iter() {
+                            let mut right_solution = right_solution.clone();
+                            let mut solution = left_solution.clone();
+                            solution.append(&mut right_solution);
+
+                            solutions.push(solution);
+                        }
+                    }
+                }
             }
         }
 
-        self.solved_orders.insert(order.to_string(), false);
-        return false;
+        println!("{}: {:?}", order, solutions);
+
+        if solutions.len() > 0 {
+            self.solved_orders.insert(order.to_string(), Some(solutions.clone()));
+            return Some(solutions);
+        } else {
+            self.solved_orders.insert(order.to_string(), None);
+            return None;
+        }        
     }
 }
 
