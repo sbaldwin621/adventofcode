@@ -42,7 +42,7 @@ impl<'a> TowelSolver<'a> {
                     unique_combinations += count;
                     continue;
                 }
-                
+
                 for n in 1..=self.largest_towel {
                     let next_i = i + n;
 
@@ -53,8 +53,8 @@ impl<'a> TowelSolver<'a> {
                     let potential_towel = &order[i..next_i];
                     if self.towels.contains(potential_towel) {
                         next_walkers.entry(next_i)
-                            .and_modify(|c| *c += 1)
-                            .or_insert(1);
+                            .and_modify(|c| *c += count)
+                            .or_insert(count);
                     }
                 }
             }
