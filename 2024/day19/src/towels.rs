@@ -4,49 +4,50 @@ use std::str::FromStr;
 use thiserror::Error;
 
 pub struct TowelSolver<'a> {
-    towels: HashSet<&'a String>,
+    towels: HashSet<String>,
     orders: &'a Vec<String>,
-    solved_orders: HashMap<String, Option<Vec<Vec<String>>>>
+    solved_orders: HashMap<String, Option<HashSet<Vec<String>>>>
 }
 
 impl<'a> TowelSolver<'a> {
     pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {
-        let mut solved_orders = HashMap::new();
-        for towel in towels.iter() {
-            solved_orders.insert(towel.clone(), Some(vec![vec![towel.clone()]]));
-        }
-
-        let towels: HashSet<_> = towels.iter().collect();
+        let solved_orders = HashMap::new();
+        let towels: HashSet<_> = towels.iter().cloned().collect();
         
         TowelSolver { towels, orders, solved_orders }
     }
 
-    pub fn solve(&mut self) -> Vec<&'a String> {
-        // let mut result = vec![];
+    pub fn solve(&mut self) -> Vec<(&'a String, HashSet<Vec<String>>)> {
+        let mut result = vec![];
 
         for order in self.orders.iter() {
             let solutions = self.solve_order(order);
-            println!("{} final: {:?}", order, solutions);
+            if let Some(solutions) = solutions {
+                println!("{} -> {:?}", order, solutions);
+                result.push((order, solutions))
+            }
         }
         
-        todo!()
+        result
     }
 
-    fn solve_order(&mut self, order: &str) -> Option<Vec<Vec<String>>> {
+    fn solve_order(&mut self, order: &str) -> Option<HashSet<Vec<String>>> {
         if let Some(answer) = self.solved_orders.get(order) {
             return answer.clone();
         }
 
-        if order.len() == 1 {
+        if order.len() == 0 {
             return None;
         }
 
-        let mut solutions = vec![];
+        let mut solutions = HashSet::new();
+
+        if self.towels.contains(order) {
+            solutions.insert(vec![order.to_string()]);
+        }
 
         for n in 1..order.len() {
             let (left, right) = order.split_at(n);
-
-            println!("{}: {} | {}", order, left, right);
 
             if let Some(left_solutions) = self.solve_order(left) {
                 if let Some(right_solutions) = self.solve_order(right) {
@@ -56,14 +57,12 @@ impl<'a> TowelSolver<'a> {
                             let mut solution = left_solution.clone();
                             solution.append(&mut right_solution);
 
-                            solutions.push(solution);
+                            solutions.insert(solution);
                         }
                     }
                 }
             }
         }
-
-        println!("{}: {:?}", order, solutions);
 
         if solutions.len() > 0 {
             self.solved_orders.insert(order.to_string(), Some(solutions.clone()));

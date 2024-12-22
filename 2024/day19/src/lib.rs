@@ -22,7 +22,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     
     let result = match options.part {
         1 => run_part1(&puzzle_input),
-        2 => run_part2(),
+        2 => run_part2(&puzzle_input),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -33,11 +33,16 @@ fn run_part1(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
     let mut solver = puzzle_input.to_solver();
     let possible_orders = solver.solve();
     
-    todo!()
+    Ok(possible_orders.len())
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
+    let mut solver = puzzle_input.to_solver();
+    let possible_orders = solver.solve();
+    
+    let count = possible_orders.iter().map(|(order, combos)| combos.len()).sum();
+    
+    Ok(count)
 }
 
 #[derive(Debug, Error)]
