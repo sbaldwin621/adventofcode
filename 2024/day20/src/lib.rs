@@ -35,7 +35,7 @@ fn run_part1(maze: &Maze, threshold: u32) -> Result<usize, ApplicationError> {
     let mut simulation = MazeSimulation::new(&maze);
     let solution = simulation.simulate(threshold).ok_or(ApplicationError::CouldntFindSolution)?;
 
-    Ok(solution.best_score().try_into().unwrap())
+    Ok(solution)
 }
 
 fn run_part2(maze: &Maze) -> Result<usize, ApplicationError> {

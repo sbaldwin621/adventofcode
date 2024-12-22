@@ -116,123 +116,55 @@ impl<'a> MazeSimulation<'a> {
         MazeSimulation { maze }
     }
 
-    pub fn simulate(&mut self, threshold: u32) -> Option<MazeSolution> {
-        let mut completed_walkers = vec![];
-        let mut walkers = vec![MazeWalker::new(self.maze.start_pos)];
-        
-        let no_cheat_score = match self.simulate_no_cheating() {
-            Some(score) => score,
-            None => return None
-        };
-        
-        let mut best_scores = HashMap::new();
-        let mut best_score = u32::MAX;
-
-        while walkers.len() > 0 {
-            let mut next_walkers = vec![];           
-
-            for walker in walkers {
-                let pos = walker.pos();
-                let score = walker.score();
-                let has_cheated = walker.has_cheated();
-
-                if pos == self.maze.end_pos {
-                    if score < best_score {
-                        best_score = score;
-                    }
-
-                    completed_walkers.push(walker);
-                    continue;
-                }
-
-                for &direction in DIRECTIONS {
-                    let next_pos = pos.move_one(direction);
-                    let next_score = score + 1;
-                    
-                    if let Tile::Floor = self.maze.tile_at(next_pos) {
-                        if !walker.has_visited(&next_pos) {
-                            let best_score_at_next_pos = best_scores.get(&(has_cheated, next_pos))
-                                .cloned().unwrap_or(u32::MAX);
-
-                            let should_continue = if next_score < best_score_at_next_pos {
-                                best_scores.insert((has_cheated, next_pos), next_score);
-                                true
-                            } else if next_score < best_score_at_next_pos.saturating_add(threshold) {
-                                true
-                            } else {
-                                false
-                            };
-
-                            if should_continue {
-                                next_walkers.push(walker.with_move(next_pos));
-                            }
-                        }
-                    } else if !has_cheated {
-                        let cheat_pos = next_pos.move_one(direction);
-                        let next_score = next_score + 1;
-
-                        if !walker.has_visited(&cheat_pos) {
-                            if let Tile::Floor = self.maze.tile_at(cheat_pos) {
-                                let best_score_at_cheat_pos = best_scores.get(&(true, cheat_pos))
-                                    .cloned().unwrap_or(u32::MAX);
-    
-                                let should_continue = if next_score < best_score_at_cheat_pos {
-                                    best_scores.insert((true, cheat_pos), next_score);
-                                    true
-                                } else if next_score + threshold < no_cheat_score {
-                                    true
-                                } else {
-                                    false
-                                };
-    
-                                if should_continue {
-                                    next_walkers.push(walker.with_cheat((next_pos, cheat_pos)));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            walkers = next_walkers;
-        }
-
+    pub fn simulate(&mut self, threshold: u32) -> Option<usize> {
+        let no_cheat_scores = self.simulate_no_cheating();
         let mut cheats = HashMap::new();
-        for walker in completed_walkers {
-            if walker.has_cheated() {
-                cheats.entry(walker.score()).and_modify(|c| *c += 1).or_insert(1_usize);
+
+        for (pos, score) in no_cheat_scores.iter() {
+            for &direction in DIRECTIONS {
+                let next_pos = pos.move_one(direction);
+                
+                if let Tile::Wall = self.maze.tile_at(next_pos) {
+                    let cheat_pos = next_pos.move_one(direction);
+                    if let Tile::Floor = self.maze.tile_at(cheat_pos) {
+                        let next_score = score + 2;
+                        if let Some(score_to_beat) = no_cheat_scores.get(&cheat_pos) {
+                            if next_score < *score_to_beat {
+                                let savings = score_to_beat - next_score;
+                                *cheats.entry(savings).or_insert(0) += 1;
+                            }
+                        } else {
+                            return None;
+                        }                        
+                    }
+                }              
             }
         }
         
+        let mut result = 0;
+
         let mut cheats: Vec<_> = cheats.iter().collect();
-        cheats.sort_by(|a, b| b.0.cmp(a.0));
+        cheats.sort_by_key(|c| c.0);
 
-        for (score, count) in cheats {
-            let time_saved = no_cheat_score - score;
-
+        for (time_saved, count) in cheats {
             println!("{} cheats that save {} picosecond(s)", count, time_saved);
+
+            if *time_saved >= threshold {
+                result += count;
+            }
         }
 
-        if let Some(best_score) = best_scores.get(&(true, self.maze.end_pos)).cloned() {
-            
-            
-            let best_path_tile_count = 0;
-            
-            Some(MazeSolution { best_score, best_path_tile_count })
-        } else {
-            None
-        }
+        Some(result)
     }
 
-    fn simulate_no_cheating(&mut self) -> Option<u32> {
+    fn simulate_no_cheating(&mut self) -> HashMap<Position, u32> {
         let mut completed_walkers = vec![];
         let mut walkers = vec![MazeWalker::new(self.maze.start_pos)];
         
         let mut best_scores = HashMap::new();
+        best_scores.insert(self.maze.start_pos, 0);
 
         while walkers.len() > 0 {
-            println!("{:?}", walkers);
-
             let mut next_walkers = vec![];           
 
             for walker in walkers {
@@ -258,14 +190,14 @@ impl<'a> MazeSimulation<'a> {
                                 next_walkers.push(walker.with_move(next_pos));
                             }
                         }
-                    }                    
+                    }
                 }
             }
 
             walkers = next_walkers;
         }
 
-        best_scores.get(&self.maze.end_pos).cloned()
+        best_scores
     }
 
     fn print(&self, all_best_paths: &HashSet<Position>) {
@@ -309,7 +241,7 @@ impl MazeWalker {
         
         let mut visited = HashSet::new();
         visited.insert(pos);
-        
+
         MazeWalker { pos, score, cheat, visited }
     }
 
