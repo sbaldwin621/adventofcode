@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 
 use clap::Parser;
-use keypad::PuzzleSolver;
+use keypad::solve;
 use thiserror::Error;
 
 mod keypad;
@@ -30,10 +30,9 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(codes: Vec<String>) -> Result<u32, ApplicationError> {
-    let puzzle_solver = PuzzleSolver::new();
-
     for code in codes {
-        puzzle_solver.solve(&code);
+        let solution = solve(&code);
+        println!("{}: {}", code, solution);
     }
 
     todo!()
