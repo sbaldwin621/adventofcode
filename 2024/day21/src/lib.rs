@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 
 use clap::Parser;
+use keypad::PuzzleSolver;
 use thiserror::Error;
 
 mod keypad;
@@ -18,9 +19,9 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
         .lines()
         .map(|s| s.trim().to_string())
         .collect();
-    
+
     let result = match options.part {
-        1 => run_part1(&codes),
+        1 => run_part1(codes),
         2 => run_part2(),
         _ => Err(ApplicationError::UnknownPart)
     }?;
@@ -28,7 +29,13 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(codes: &Vec<String>) -> Result<u32, ApplicationError> {
+fn run_part1(codes: Vec<String>) -> Result<u32, ApplicationError> {
+    let puzzle_solver = PuzzleSolver::new();
+
+    for code in codes {
+        puzzle_solver.solve(&code);
+    }
+
     todo!()
 }
 
