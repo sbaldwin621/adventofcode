@@ -22,7 +22,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     
     let result = match options.part {
         1 => run_part1(&puzzle_input),
-        2 => run_part2(),
+        2 => run_part2(&puzzle_input),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -33,18 +33,18 @@ fn run_part1(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
     let mut solver = puzzle_input.to_solver();
 
     let completed_orders = solver.solve();
-    let count = completed_orders.iter().filter(|o| o.is_possible()).count();
-
-    println!("completed orders:");
-    for order in completed_orders.iter() {
-        println!("{} -> {:?}", order.order(), order.combinations());
-    }
+    let count = completed_orders.iter().filter(|(_, count)| *count > 0).count();
 
     Ok(count)
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
+    let mut solver = puzzle_input.to_solver();
+
+    let completed_orders = solver.solve();
+    let total_unique_combinations = completed_orders.iter().map(|(_, count)| *count).sum();
+    
+    Ok(total_unique_combinations)
 }
 
 #[derive(Debug, Error)]

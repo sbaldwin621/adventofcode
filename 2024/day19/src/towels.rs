@@ -17,51 +17,52 @@ impl<'a> TowelSolver<'a> {
         TowelSolver { towels, largest_towel, orders }
     }
 
-    pub fn solve(&mut self) -> Vec<CompletedOrder> {
+    pub fn solve(&mut self) -> Vec<(String, usize)> {
         let mut result = vec![];
 
         for order in self.orders.iter() {
-            let combinations = self.solve_order(order);
-            result.push(CompletedOrder { order: order.to_string(), combinations });
+            let unique_combinations = self.solve_order(order);
+            result.push((order.to_string(), unique_combinations))
         }
 
         result
     }
 
-    fn solve_order(&self, order: &str) -> Vec<Vec<String>> {
-        let mut walkers = vec![Walker::new(0, vec![])];
+    fn solve_order(&self, order: &str) -> usize {
+        let mut walkers = HashMap::new();
+        walkers.insert(0, 1);
         
-        let mut completed_paths = vec![];
+        let mut unique_combinations = 0;
 
         while walkers.len() > 0 {
-            let mut next_walkers = vec![];
+            let mut next_walkers = HashMap::new();
 
-            for walker in walkers {
-                if walker.i == order.len() {
-                    completed_paths.push(walker.path);
+            for (i, count) in walkers {
+                if i == order.len() {
+                    unique_combinations += count;
                     continue;
                 }
-
+                
                 for n in 1..=self.largest_towel {
-                    let i = walker.i;
-                    if i + n > order.len() {
+                    let next_i = i + n;
+
+                    if next_i > order.len() {
                         break;
                     }
 
-                    let potential_towel = &order[i..i+n];
+                    let potential_towel = &order[i..next_i];
                     if self.towels.contains(potential_towel) {
-                        let new_walker = walker.add_towel(potential_towel);
-                        next_walkers.push(new_walker);
+                        next_walkers.entry(next_i)
+                            .and_modify(|c| *c += 1)
+                            .or_insert(1);
                     }
                 }
             }
 
-            println!("{} walkers", next_walkers.len());
-
             walkers = next_walkers;
         }
 
-        completed_paths
+        unique_combinations
     }    
 }
 
@@ -82,26 +83,6 @@ impl CompletedOrder {
 
     pub fn is_possible(&self) -> bool {
         self.combinations.len() > 0
-    }
-}
-
-#[derive(Debug, Hash)]
-struct Walker {
-    i: usize,
-    path: Vec<String>
-}
-
-impl Walker {
-    pub fn new(i: usize, path: Vec<String>) -> Walker {
-        Walker { i, path }
-    }
-
-    pub fn add_towel(&self, towel: &str) -> Walker {
-        let i = self.i + towel.len();
-        let mut path = self.path.clone();
-        path.push(towel.to_string());
-        
-        Walker { i, path }
     }
 }
 
