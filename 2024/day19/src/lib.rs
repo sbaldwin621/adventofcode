@@ -31,18 +31,20 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
     let mut solver = puzzle_input.to_solver();
-    let possible_orders = solver.solve();
-    
-    Ok(possible_orders.len())
+
+    let completed_orders = solver.solve();
+    let count = completed_orders.iter().filter(|(_, count)| *count > 0).count();
+
+    Ok(count)
 }
 
 fn run_part2(puzzle_input: &PuzzleInput) -> Result<usize, ApplicationError> {
     let mut solver = puzzle_input.to_solver();
-    let possible_orders = solver.solve();
+
+    let completed_orders = solver.solve();
+    let total_unique_combinations = completed_orders.iter().map(|(_, count)| *count).sum();
     
-    let count = possible_orders.iter().map(|(order, combos)| combos.len()).sum();
-    
-    Ok(count)
+    Ok(total_unique_combinations)
 }
 
 #[derive(Debug, Error)]

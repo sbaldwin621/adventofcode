@@ -5,72 +5,84 @@ use thiserror::Error;
 
 pub struct TowelSolver<'a> {
     towels: HashSet<String>,
-    orders: &'a Vec<String>,
-    solved_orders: HashMap<String, Option<HashSet<Vec<String>>>>
+    largest_towel: usize,
+    orders: &'a Vec<String>
 }
 
 impl<'a> TowelSolver<'a> {
-    pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {
-        let solved_orders = HashMap::new();
+    pub fn new(towels: &'a Vec<String>, orders: &'a Vec<String>) -> TowelSolver<'a> {       
         let towels: HashSet<_> = towels.iter().cloned().collect();
+        let largest_towel = towels.iter().max_by_key(|t| t.len()).unwrap().len();
         
-        TowelSolver { towels, orders, solved_orders }
+        TowelSolver { towels, largest_towel, orders }
     }
 
-    pub fn solve(&mut self) -> Vec<(&'a String, HashSet<Vec<String>>)> {
+    pub fn solve(&mut self) -> Vec<(String, usize)> {
         let mut result = vec![];
 
         for order in self.orders.iter() {
-            let solutions = self.solve_order(order);
-            if let Some(solutions) = solutions {
-                println!("{} -> {:?}", order, solutions);
-                result.push((order, solutions))
-            }
+            let unique_combinations = self.solve_order(order);
+            result.push((order.to_string(), unique_combinations))
         }
         
         result
     }
 
-    fn solve_order(&mut self, order: &str) -> Option<HashSet<Vec<String>>> {
-        if let Some(answer) = self.solved_orders.get(order) {
-            return answer.clone();
-        }
+    fn solve_order(&self, order: &str) -> usize {
+        let mut walkers = HashMap::new();
+        walkers.insert(0, 1);
+        
+        let mut unique_combinations = 0;
 
-        if order.len() == 0 {
-            return None;
-        }
+        while walkers.len() > 0 {
+            let mut next_walkers = HashMap::new();
 
-        let mut solutions = HashSet::new();
+            for (i, count) in walkers {
+                if i == order.len() {
+                    unique_combinations += count;
+                    continue;
+                }
 
-        if self.towels.contains(order) {
-            solutions.insert(vec![order.to_string()]);
-        }
+                for n in 1..=self.largest_towel {
+                    let next_i = i + n;
 
-        for n in 1..order.len() {
-            let (left, right) = order.split_at(n);
+                    if next_i > order.len() {
+                        break;
+                    }
 
-            if let Some(left_solutions) = self.solve_order(left) {
-                if let Some(right_solutions) = self.solve_order(right) {
-                    for left_solution in left_solutions {
-                        for right_solution in right_solutions.iter() {
-                            let mut right_solution = right_solution.clone();
-                            let mut solution = left_solution.clone();
-                            solution.append(&mut right_solution);
-
-                            solutions.insert(solution);
-                        }
+                    let potential_towel = &order[i..next_i];
+                    if self.towels.contains(potential_towel) {
+                        next_walkers.entry(next_i)
+                            .and_modify(|c| *c += count)
+                            .or_insert(count);
                     }
                 }
             }
+
+            walkers = next_walkers;
         }
 
-        if solutions.len() > 0 {
-            self.solved_orders.insert(order.to_string(), Some(solutions.clone()));
-            return Some(solutions);
-        } else {
-            self.solved_orders.insert(order.to_string(), None);
-            return None;
-        }        
+        unique_combinations
+    }    
+}
+
+#[derive(Debug)]
+pub struct CompletedOrder {
+    order: String,
+    combinations: Vec<Vec<String>>
+}
+
+impl CompletedOrder {
+    pub fn order(&self) -> &str {
+        &self.order
+    }
+
+    pub fn combinations(&self) -> &Vec<Vec<String>> {
+        &self.combinations
+    }
+
+    pub fn is_possible(&self) -> bool {
+        self.combinations.len() > 0
     }
 }
 
