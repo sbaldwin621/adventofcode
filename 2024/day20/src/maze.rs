@@ -157,7 +157,7 @@ impl<'a> MazeSimulation<'a> {
                             let should_continue = if next_score < best_score_at_next_pos {
                                 best_scores.insert((has_cheated, next_pos), next_score);
                                 true
-                            } else if next_score < no_cheat_score - threshold {
+                            } else if next_score < best_score_at_next_pos.saturating_add(threshold) {
                                 true
                             } else {
                                 false
@@ -179,7 +179,7 @@ impl<'a> MazeSimulation<'a> {
                                 let should_continue = if next_score < best_score_at_cheat_pos {
                                     best_scores.insert((true, cheat_pos), next_score);
                                     true
-                                } else if next_score < no_cheat_score - threshold {
+                                } else if next_score + threshold < no_cheat_score {
                                     true
                                 } else {
                                     false
@@ -231,6 +231,8 @@ impl<'a> MazeSimulation<'a> {
         let mut best_scores = HashMap::new();
 
         while walkers.len() > 0 {
+            println!("{:?}", walkers);
+
             let mut next_walkers = vec![];           
 
             for walker in walkers {
@@ -304,8 +306,10 @@ impl MazeWalker {
     pub fn new(pos: Position) -> MazeWalker {
         let score = 0;
         let cheat = None;
-        let visited = HashSet::new();
-
+        
+        let mut visited = HashSet::new();
+        visited.insert(pos);
+        
         MazeWalker { pos, score, cheat, visited }
     }
 
