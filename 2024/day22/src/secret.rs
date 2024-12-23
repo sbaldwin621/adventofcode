@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug)]
 pub struct MarketSimulator {
 }
@@ -10,12 +12,9 @@ impl MarketSimulator {
     pub fn simulate(&self, secrets: Vec<u64>, generations: usize) {
         let mut secrets = secrets;
         
-        let mut prices: Vec<PriceHistory> = Vec::with_capacity(secrets.len());
-        for secret in secrets.iter() {
-            let mut price_history = PriceHistory::new();
-            price_history.add_secret(*secret);
-            
-            prices.push(price_history);
+        let mut history = MarketHistory::new();
+        for (i, secret) in secrets.iter().enumerate() {
+            history.record_secret(i, secret);
         }
 
         for _ in 0..generations {
@@ -24,13 +23,33 @@ impl MarketSimulator {
                 *secret = mix_prune(*secret, *secret >> 5);
                 *secret = mix_prune(*secret, *secret * 2048);
                 
-                prices[i].add_secret(*secret);
+                history.record_secret(i, secret);
             }
         }
 
-        for price in &prices[0].prices {
+        for price in &history.price_histories.get(&0).unwrap().prices {
             println!("{} ({})", price.price, price.changes[3]);
         }
+    }
+}
+
+#[derive(Debug)]
+struct MarketHistory {
+    price_histories: HashMap<usize, PriceHistory>
+}
+
+impl MarketHistory {
+    pub fn new() -> MarketHistory {
+        let price_histories = HashMap::new();
+
+        MarketHistory { price_histories }
+    }
+
+    pub fn record_secret(&mut self, buyer_id: usize, secret: &u64) {
+        let entry = self.price_histories.entry(buyer_id)
+            .or_insert_with(|| PriceHistory::new());
+
+        entry.record_secret(*secret);
     }
 }
 
@@ -46,7 +65,7 @@ impl PriceHistory {
         PriceHistory { prices }
     }
 
-    pub fn add_secret(&mut self, secret: u64) {
+    pub fn record_secret(&mut self, secret: u64) {
         let price: i8 = (secret % 10).try_into().unwrap();
         self.add_price(price);
     }
