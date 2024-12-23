@@ -23,7 +23,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(codes),
-        2 => run_part2(),
+        2 => run_part2(codes),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -33,15 +33,21 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 fn run_part1(codes: Vec<String>) -> Result<usize, ApplicationError> {
     let mut total = 0;
     for code in codes {
-        let complexity = solve(&code);
+        let complexity = solve(&code, 2);
         total += complexity;
     }
 
     Ok(total)
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
-    todo!()
+fn run_part2(codes: Vec<String>) -> Result<usize, ApplicationError> {
+    let mut total = 0;
+    for code in codes {
+        let complexity = solve(&code, 25);
+        total += complexity;
+    }
+
+    Ok(total)
 }
 
 #[derive(Debug, Error)]

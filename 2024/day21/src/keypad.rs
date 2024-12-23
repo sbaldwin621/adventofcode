@@ -3,17 +3,21 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
-pub fn solve(code: &str) -> usize {
-    let keypads = [
-        Keypad::numeric_keypad(),
-        Keypad::directional_keypad(),
-        Keypad::directional_keypad()
+pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
+    let mut keypads = vec![
+        Keypad::numeric_keypad()
     ];
+
+    for _ in 0..directional_keypad_count {
+        keypads.push(Keypad::directional_keypad());
+    }
 
     let mut current_codes = HashSet::new();
     current_codes.insert(code.to_string());
 
-    for keypad in keypads {
+    for (n, keypad) in keypads.iter().enumerate() {
+        println!("keypad {}: {:?}", n, current_codes.iter().take(1).collect::<Vec<_>>()[0].len());
+
         let mut next_codes = HashSet::new();
         for code in current_codes {
             for next_code in keypad.solve_code(&code) {
@@ -21,13 +25,10 @@ pub fn solve(code: &str) -> usize {
             }
         }
 
-        current_codes = next_codes;
+        current_codes = keep_shortest(next_codes);
     }
 
-    let shortest_len = current_codes.iter().map(|c| c.len()).min().unwrap();
-    let shortest_codes: Vec<_> = current_codes.iter().filter(|c| c.len() == shortest_len).collect();
-    
-    let shortest_code = shortest_codes.first().unwrap();
+    let shortest_code = current_codes.iter().next().unwrap();
 
     let value = code_numeric_value(code).unwrap();
     let complexity = shortest_code.len() * value;
@@ -36,6 +37,13 @@ pub fn solve(code: &str) -> usize {
     println!("{}: {} * {} = {}", code, shortest_code.len(), value, complexity);
 
     complexity
+}
+
+fn keep_shortest(set: HashSet<String>) -> HashSet<String> {
+    let shortest_len = set.iter().map(|c| c.len()).min().unwrap();
+    let result: HashSet<_> = set.into_iter().filter(|c| c.len() == shortest_len).take(1).collect();
+
+    result
 }
 
 pub fn simulate(code: &str) -> Option<String> {
@@ -181,6 +189,7 @@ impl Keypad {
         }
 
         let start_pos = self.get_pos_for_key(start).unwrap();
+        let goal_pos = self.get_pos_for_key(goal).unwrap();
         
         let mut best_scores = HashMap::new();
 
@@ -199,7 +208,7 @@ impl Keypad {
                                 best_scores.insert(*next_walker.pos(), next_walker.score());
 
                                 if next_key == goal {
-                                    completed.push(next_walker.into_path());
+                                    completed.push(next_walker);
                                 } else {
                                     next_walkers.push(next_walker);
                                 }
@@ -211,8 +220,17 @@ impl Keypad {
 
             walkers = next_walkers;
         }
+        
+        let best_score = *best_scores.get(&goal_pos).unwrap();
 
-        completed
+        let mut best_paths = vec![];
+        for walker in completed.into_iter() {
+            if walker.score() == best_score {
+                best_paths.push(walker.into_path());
+            }
+        }
+
+        best_paths
     }
 
     pub fn solve_code(&self, code: &str) -> Vec<String> {
@@ -234,7 +252,7 @@ impl Keypad {
                 }
             }
 
-            current_results = next_results;
+            current_results = keep_shortest(next_results);
             current_char = char;
         }
 
