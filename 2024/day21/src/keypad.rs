@@ -221,14 +221,18 @@ impl Keypad {
 #[derive(Debug)]
 struct KeypadWalker {
     pos: Position,
-    path: Vec<Direction>
+    facing: Option<Direction>,
+    path: Vec<Direction>,
+    score: usize
 }
 
 impl KeypadWalker {
     pub fn new(pos: Position) -> KeypadWalker {
         let path = vec![];
+        let facing = None;
+        let score = 0;
 
-        KeypadWalker { pos, path }
+        KeypadWalker { pos, facing, path, score }
     }
     
     pub fn pos(&self) -> &Position {
@@ -236,7 +240,7 @@ impl KeypadWalker {
     }
 
     pub fn score(&self) -> usize {
-        self.path.len()
+        self.score
     }
 
     pub fn into_path(self) -> Vec<Direction> {
@@ -248,8 +252,19 @@ impl KeypadWalker {
         path.push(direction);
 
         let pos = self.pos.move_one(direction);
+        let score = if let Some(cur_facing) = self.facing {
+            if cur_facing == direction {
+                self.score + 1
+            } else {
+                self.score + 2
+            }
+        } else {
+            self.score + 1
+        };
 
-        KeypadWalker { pos, path }
+        let facing = Some(direction);
+
+        KeypadWalker { pos, facing, score, path }
     }
 }
 

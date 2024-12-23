@@ -31,10 +31,10 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(codes: Vec<String>) -> Result<usize, ApplicationError> {
-    let result = simulate("v<A<AA>^>AvA^<A>vA^Av<<A>^>AvA^Av<<A>^>AAvA<A^>A<A>Av<A<A>^>AAA<A>vA^A");
-    println!("{:?}", result);
+    // let result = simulate("v<A<AA>^>AvA^<A>vA^Av<<A>^>AvA^Av<<A>^>AAvA<A^>A<A>Av<A<A>^>AAA<A>vA^A");
+    // println!("{:?}", result);
 
-    panic!();
+    // panic!();
     
 
     let mut total = 0;
