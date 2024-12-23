@@ -18,7 +18,7 @@ pub fn solve(code: &str) -> usize {
         for code in current_codes {
             for next_code in keypad.solve_code(&code) {
                 next_codes.insert(next_code);
-            }            
+            }
         }
 
         current_codes = next_codes;
@@ -34,7 +34,7 @@ pub fn solve(code: &str) -> usize {
 
     println!("{}: {}", code, shortest_code);
     println!("{}: {} * {} = {}", code, shortest_code.len(), value, complexity);
-    
+
     complexity
 }
 
@@ -167,7 +167,6 @@ impl Keypad {
 
             if let None = self.get_key_for_pos(&next_pos) {
                 panic!("out of bounds on '{}'", char);
-                return None;
             }
 
             current_pos = next_pos;
@@ -286,10 +285,8 @@ impl KeypadWalker {
         let score = if let Some(cur_facing) = self.facing {
             if cur_facing == direction {
                 self.score + 1
-            } else if direction == Direction::South {
-                self.score + 2
             } else {
-                self.score + 3
+                self.score + 2
             }
         } else {
             self.score + 1
