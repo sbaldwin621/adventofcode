@@ -3,6 +3,7 @@ use std::io;
 use std::num::ParseIntError;
 
 use clap::Parser;
+use secret::MarketSimulator;
 use secret::SecretGenerator;
 use thiserror::Error;
 
@@ -20,7 +21,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     
     let result = match options.part {
         1 => run_part1(puzzle_input),
-        2 => run_part2(),
+        2 => run_part2(puzzle_input),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -46,7 +47,11 @@ fn run_part1(puzzle_input: Vec<u64>) -> Result<u64, ApplicationError> {
     Ok(secret_generator.sum())
 }
 
-fn run_part2() -> Result<u64, ApplicationError> {
+fn run_part2(puzzle_input: Vec<u64>) -> Result<u64, ApplicationError> {
+    let mut market = MarketSimulator::new();
+
+    market.simulate(puzzle_input, 10);
+
     todo!()
 }
 
