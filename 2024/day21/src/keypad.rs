@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
-pub fn solve(code: &str) -> String {
+use thiserror::Error;
+
+pub fn solve(code: &str) -> usize {
     let keypads = [
         Keypad::numeric_keypad(),
         Keypad::directional_keypad(),
@@ -12,7 +15,33 @@ pub fn solve(code: &str) -> String {
         current_code = keypad.solve_code(&current_code).unwrap();
     }
     
-    current_code
+    let value = code_numeric_value(code).unwrap();
+    let complexity = current_code.len() * value;
+
+    println!("{}: {}", code, current_code);
+    println!("{}: {} * {} = {}", code, current_code.len(), value, complexity);
+
+    complexity
+}
+
+pub fn simulate(code: &str) -> Option<String> {
+    let keypads = [
+        Keypad::directional_keypad(),
+        Keypad::directional_keypad(),
+        Keypad::numeric_keypad()
+    ];
+
+    let mut current_code = code.to_string();
+    for keypad in keypads {
+        current_code = keypad.simulate(&current_code).unwrap();
+    }
+
+    Some(current_code)
+}
+
+fn code_numeric_value(code: &str) -> Option<usize> {
+    let digits: String = code.chars().filter(|c| c.is_digit(10)).collect();
+    digits.parse().ok()
 }
 
 fn path_to_code(path: &Vec<Direction>) -> String {
@@ -32,6 +61,17 @@ fn path_to_code(path: &Vec<Direction>) -> String {
     s.push('A');
 
     s
+}
+
+fn code_to_instructions(code: &str) -> Result<Vec<Instruction>, ParseInstructionError> {
+    let mut result = vec![];
+
+    for char in code.chars() {
+        let instruction: Instruction = char.to_string().parse()?;
+        result.push(instruction);
+    }
+
+    Ok(result)
 }
 
 #[derive(Debug)]
@@ -90,6 +130,36 @@ impl Keypad {
 
     pub fn get_key_for_pos(&self, pos: &Position) -> Option<char> {
         self.pos_to_key.get(pos).cloned()
+    }
+
+    pub fn simulate(&self, code: &str) -> Option<String> {
+        let mut result = String::new();
+
+        let mut current_pos = self.get_pos_for_key('A').unwrap();
+        for char in code.chars() {
+            let next_pos = match char {
+                '^' => current_pos.move_one(Direction::North),
+                '>' => current_pos.move_one(Direction::East),
+                'v' => current_pos.move_one(Direction::South),
+                '<' => current_pos.move_one(Direction::West),
+                'A' => {
+                    let current_key = self.get_key_for_pos(&current_pos).unwrap();
+                    result.push(current_key);
+
+                    current_pos
+                },
+                _ => return None
+            };
+
+            if let None = self.get_key_for_pos(&next_pos) {
+                panic!("out of bounds on '{}'", char);
+                return None;
+            }
+
+            current_pos = next_pos;
+        }
+
+        Some(result)
     }
 
     pub fn solve_path(&self, start: char, goal: char) -> Option<Vec<Direction>> {
@@ -189,6 +259,27 @@ pub enum Instruction {
     PressButton
 }
 
+impl FromStr for Instruction {
+    type Err = ParseInstructionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "^" => Ok(Instruction::Move(Direction::North)),
+            ">" => Ok(Instruction::Move(Direction::East)),
+            "v" => Ok(Instruction::Move(Direction::South)),
+            "<" => Ok(Instruction::Move(Direction::West)),
+            "A" => Ok(Instruction::PressButton),
+            _ => Err(ParseInstructionError::InvalidInstruction)
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ParseInstructionError {
+    #[error("invalid instruction")]
+    InvalidInstruction
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Direction {
     North,
@@ -213,5 +304,50 @@ impl Position {
             Direction::South => Position(x, y + 1),
             Direction::West => Position(x - 1, y)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Keypad;
+
+    #[test]
+    pub fn simulate1() {
+        let keypad = Keypad::numeric_keypad();
+        let result = keypad.simulate("^AA<A").unwrap();
+
+        assert_eq!(result, "332")
+    }
+
+    #[test]
+    pub fn simulate2() {
+        let keypad = Keypad::numeric_keypad();
+        let result = keypad.simulate(&keypad.solve_code("357").unwrap()).unwrap();
+
+        assert_eq!(result, "357")
+    }
+
+
+    #[test]
+    pub fn simulate3() {
+        let keypad = Keypad::numeric_keypad();
+        let keypad2 = Keypad::directional_keypad();
+        let keypad3 = Keypad::directional_keypad();
+
+        let code1 = keypad.solve_code("029A").unwrap();
+        let code2 = keypad2.solve_code(&code1).unwrap();
+        let code3 = keypad3.solve_code(&code2).unwrap();
+
+        println!("{}", code3);
+
+        let result = keypad.simulate(
+            &keypad2.simulate(
+                &keypad3.simulate(
+                    &code3
+                ).unwrap()
+            ).unwrap()
+        ).unwrap();
+
+        println!("{:?}", result);
     }
 }

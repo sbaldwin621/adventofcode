@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 
 use clap::Parser;
+use keypad::simulate;
 use keypad::solve;
 use thiserror::Error;
 
@@ -29,16 +30,25 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(codes: Vec<String>) -> Result<u32, ApplicationError> {
+fn run_part1(codes: Vec<String>) -> Result<usize, ApplicationError> {
+    let result = simulate("v<A<AA>^>AvA^<A>vA^Av<<A>^>AvA^Av<<A>^>AAvA<A^>A<A>Av<A<A>^>AAA<A>vA^A");
+    println!("{:?}", result);
+
+    panic!();
+    
+
+    let mut total = 0;
     for code in codes {
-        let solution = solve(&code);
-        println!("{}: {}", code, solution);
+        let complexity = solve(&code);
+        println!("{}: {}", code, complexity);
+
+        total += complexity;
     }
 
-    todo!()
+    Ok(total)
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<usize, ApplicationError> {
     todo!()
 }
 
