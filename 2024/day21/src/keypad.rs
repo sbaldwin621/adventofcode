@@ -26,23 +26,16 @@ pub fn solve(code: &str) -> usize {
 
     let shortest_len = current_codes.iter().map(|c| c.len()).min().unwrap();
     let shortest_codes: Vec<_> = current_codes.iter().filter(|c| c.len() == shortest_len).collect();
-
-    println!("{:?} ({})", shortest_codes.len(), shortest_len);
-
-    todo!()
-
-    // let mut current_code = code.to_string();
-    // for keypad in keypads {
-    //     current_code = keypad.solve_code(&current_code).unwrap();
-    // }
     
-    // let value = code_numeric_value(code).unwrap();
-    // let complexity = current_code.len() * value;
+    let shortest_code = shortest_codes.first().unwrap();
 
-    // println!("{}: {}", code, current_code);
-    // println!("{}: {} * {} = {}", code, current_code.len(), value, complexity);
+    let value = code_numeric_value(code).unwrap();
+    let complexity = shortest_code.len() * value;
 
-    // complexity
+    println!("{}: {}", code, shortest_code);
+    println!("{}: {} * {} = {}", code, shortest_code.len(), value, complexity);
+    
+    complexity
 }
 
 pub fn simulate(code: &str) -> Option<String> {
@@ -219,8 +212,6 @@ impl Keypad {
 
             walkers = next_walkers;
         }
-
-        println!("{:?}", completed);
 
         completed
     }

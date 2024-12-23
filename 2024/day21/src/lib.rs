@@ -31,17 +31,9 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(codes: Vec<String>) -> Result<usize, ApplicationError> {
-    // let result = simulate("v<A<AA>^>AvA^<A>vA^Av<<A>^>AvA^Av<<A>^>AAvA<A^>A<A>Av<A<A>^>AAA<A>vA^A");
-    // println!("{:?}", result);
-
-    // panic!();
-    
-
     let mut total = 0;
     for code in codes {
         let complexity = solve(&code);
-        println!("{}: {}", code, complexity);
-
         total += complexity;
     }
 
