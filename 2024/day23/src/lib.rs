@@ -28,7 +28,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
+fn run_part1(network_map: &NetworkMap) -> Result<String, ApplicationError> {
     let clusters = network_map.clusters_of_three();
 
     let t_count = clusters.iter()
@@ -36,13 +36,14 @@ fn run_part1(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
         .inspect(|[a,b,c]| println!("{},{},{}", a, b, c))
         .count();
 
-    Ok(t_count)
+    Ok(t_count.to_string())
 }
 
-fn run_part2(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
-    let clusters = network_map.clusters();
+fn run_part2(network_map: &NetworkMap) -> Result<String, ApplicationError> {
+    let largest_network = network_map.largest_network();
+    let solution = largest_network.join(",");
 
-    todo!()
+    Ok(solution)
 }
 
 #[derive(Debug, Error)]
