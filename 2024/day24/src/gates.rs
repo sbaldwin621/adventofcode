@@ -1,17 +1,99 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use thiserror::Error;
 
 #[derive(Debug)]
+pub struct Device {
+    wires: HashSet<String>,
+    values: HashMap<String, bool>,
+    gates_by_output: HashMap<String, Gate>
+}
+
+impl Device {
+    pub fn new(values: HashMap<String, bool>, gates: Vec<Gate>) -> Device {
+        let mut wires = HashSet::new();
+
+        for (wire, _) in values.iter() {
+            wires.insert(wire.to_string());
+        }
+        
+        let mut gates_by_output = HashMap::new();
+
+        for gate in gates {
+            wires.insert(gate.left_input.to_string());
+            wires.insert(gate.right_input.to_string());
+            wires.insert(gate.output.to_string());
+
+            gates_by_output.insert(gate.output.to_string(), gate);
+        }
+
+        Device { wires, values, gates_by_output }
+    }
+
+    pub fn solve(&mut self) -> usize {
+        let all_z_wires: Vec<_> = self.wires.iter().filter(|w| w.starts_with('z')).collect();
+        let mut current_wires = all_z_wires.clone();
+
+        while let Some(wire) = current_wires.pop() {
+            if !self.values.contains_key(wire) {
+                let gate = self.gates_by_output.get(wire).expect("wire should either have a value or a gate");
+                match self.evaluate_gate(gate) {
+                    Some(value) => {
+                        self.values.insert(wire.to_string(), value);
+                    },
+                    None => {
+                        current_wires.push(wire);
+                        current_wires.push(&gate.left_input);
+                        current_wires.push(&gate.right_input);
+                    }
+                }
+            }
+        }
+
+        let mut result = 0;
+
+        for z_wire in all_z_wires {
+            let value = self.values.get(z_wire).expect("z wire must have received a value");
+            if *value {
+                let n: u32 = z_wire[1..].parse().expect("z wire must end in integer");
+                let value = 2_usize.pow(n);
+
+                result += value;
+            }
+        }
+
+        result
+    }
+
+    fn evaluate_gate(&self, gate: &Gate) -> Option<bool> {
+        let left = self.values.get(&gate.left_input)?;
+        let right = self.values.get(&gate.right_input)?;
+
+        let output = match (left, gate.operation, right) {
+            (true, GateOperation::And, true) => true,
+            (true, GateOperation::Or, _) | (_, GateOperation::Or, true) => true,
+            (true, GateOperation::Xor, false) | (false, GateOperation::Xor, true) => true,
+            _ => false
+        };
+
+        Some(output)
+    }
+}
+
+#[derive(Debug)]
 pub struct PuzzleInput {
-    initial_values: HashMap<String, WireValue>,
+    initial_values: HashMap<String, bool>,
     gates: Vec<Gate>
 }
 
 impl PuzzleInput {
-    pub fn new(initial_values: HashMap<String, WireValue>, gates: Vec<Gate>) -> PuzzleInput {
+    pub fn new(initial_values: HashMap<String, bool>, gates: Vec<Gate>) -> PuzzleInput {
         PuzzleInput { initial_values, gates }
+    }
+
+    pub fn into_device(self) -> Device {
+        Device::new(self.initial_values, self.gates)
     }
 }
 
@@ -30,7 +112,11 @@ impl FromStr for PuzzleInput {
             }
             
             if let Some((gate, value)) = line.split_once(": ") {
-                let value: WireValue = value.parse()?;
+                let value = match value {
+                    "0" => false,
+                    "1" => true,
+                    _ => return Err(ParsePuzzleInputError::InvalidWireValue(s.to_string()))
+                };
 
                 initial_values.insert(gate.to_string(), value);
             }
@@ -48,34 +134,9 @@ impl FromStr for PuzzleInput {
 #[derive(Error, Debug)]
 pub enum ParsePuzzleInputError {
     #[error("invalid wire value: {0}")]
-    InvalidWireValue(#[from] ParseWireValueError),
+    InvalidWireValue(String),
     #[error("invalid gate: {0}")]
     InvalidGate(#[from] ParseGateError)
-}
-
-#[derive(Debug)]
-pub enum WireValue {
-    Undecided,
-    True,
-    False
-}
-
-impl FromStr for WireValue {
-    type Err = ParseWireValueError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "0" => Ok(WireValue::False),
-            "1" => Ok(WireValue::True),
-            _ => Err(ParseWireValueError::UnknownWireValue(s.to_string()))
-        }
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum ParseWireValueError {
-    #[error("unknown wire value: {0}")]
-    UnknownWireValue(String)
 }
 
 #[derive(Debug)]
@@ -120,7 +181,7 @@ pub enum ParseGateError {
     InvalidSyntax
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum GateOperation {
     And,
     Or,

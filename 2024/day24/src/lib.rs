@@ -28,13 +28,13 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     Ok(result.to_string())
 }
 
-fn run_part1(puzzle_input: PuzzleInput) -> Result<u32, ApplicationError> {
-    println!("{:?}", puzzle_input);
+fn run_part1(puzzle_input: PuzzleInput) -> Result<usize, ApplicationError> {
+    let mut device = puzzle_input.into_device();
     
-    todo!()
+    Ok(device.solve())
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
+fn run_part2() -> Result<usize, ApplicationError> {
     todo!()
 }
 
