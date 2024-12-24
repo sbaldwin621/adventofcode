@@ -51,19 +51,7 @@ impl Device {
             }
         }
 
-        let mut result = 0;
-
-        for z_wire in all_z_wires {
-            let value = self.values.get(z_wire).expect("z wire must have received a value");
-            if *value {
-                let n: u32 = z_wire[1..].parse().expect("z wire must end in integer");
-                let value = 2_usize.pow(n);
-
-                result += value;
-            }
-        }
-
-        result
+        self.wireset_value("z")
     }
 
     fn evaluate_gate(&self, gate: &Gate) -> Option<bool> {
@@ -78,6 +66,29 @@ impl Device {
         };
 
         Some(output)
+    }
+
+    pub fn expected_output(&self) -> usize {
+        let xs_value = self.wireset_value("x");
+        let ys_value = self.wireset_value("y");
+
+        xs_value + ys_value
+    }
+
+    fn wireset_value(&self, prefix: &str) -> usize {
+        let mut result = 0;
+
+        for wire in self.wires.iter().filter(|w| w.starts_with(prefix)) {
+            let value = self.values.get(wire).expect("wire must have a value");
+            if *value {
+                let n: u32 = wire[1..].parse().expect("wire must end in integer");
+                let value = 2_usize.pow(n);
+
+                result += value;
+            }
+        }
+
+        result
     }
 }
 
@@ -94,6 +105,10 @@ impl PuzzleInput {
 
     pub fn into_device(self) -> Device {
         Device::new(self.initial_values, self.gates)
+    }
+
+    pub fn gates(&self) -> &Vec<Gate> {
+        &self.gates
     }
 }
 
@@ -150,6 +165,18 @@ pub struct Gate {
 impl Gate {
     pub fn new(left_input: String, right_input: String, output: String, operation: GateOperation) -> Gate {
         Gate { left_input, right_input, output, operation }
+    }
+
+    pub fn left_input(&self) -> &str {
+        &self.left_input
+    }
+
+    pub fn right_input(&self) -> &str {
+        &self.right_input
+    }
+
+    pub fn output(&self) -> &str {
+        &self.output
     }
 }
 
