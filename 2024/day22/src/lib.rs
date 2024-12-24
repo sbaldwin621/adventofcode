@@ -48,11 +48,13 @@ fn run_part1(puzzle_input: Vec<u64>) -> Result<u64, ApplicationError> {
 }
 
 fn run_part2(puzzle_input: Vec<u64>) -> Result<u64, ApplicationError> {
-    let mut market = MarketSimulator::new();
+    let market = MarketSimulator::new();
+    
+    let history = market.simulate(puzzle_input, 2000);
+    let bananas = history.find_best_bananas();
+    let bananas: u64 = bananas.try_into().unwrap();
 
-    market.simulate(puzzle_input, 10);
-
-    todo!()
+    Ok(bananas)
 }
 
 #[derive(Debug, Error)]
