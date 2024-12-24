@@ -21,7 +21,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
     
     let result = match options.part {
         1 => run_part1(&network_map),
-        2 => run_part2(),
+        2 => run_part2(&network_map),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
@@ -29,7 +29,7 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 }
 
 fn run_part1(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
-    let clusters = network_map.clusters();
+    let clusters = network_map.clusters_of_three();
 
     let t_count = clusters.iter()
         .filter(|c| c.iter().any(|n| n.starts_with('t')))
@@ -39,7 +39,9 @@ fn run_part1(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
     Ok(t_count)
 }
 
-fn run_part2() -> Result<usize, ApplicationError> {
+fn run_part2(network_map: &NetworkMap) -> Result<usize, ApplicationError> {
+    let clusters = network_map.clusters();
+
     todo!()
 }
 
