@@ -43,8 +43,6 @@ impl NetworkMap {
             masks.insert(node, mask);
         }
 
-        println!("{:?}", masks);
-
         let mut combined = HashMap::new();
         for (_, mask) in masks.iter() {
             for (_, other_mask) in masks.iter() {
