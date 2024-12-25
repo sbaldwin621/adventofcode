@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Device {
     wires: HashSet<String>,
     values: HashMap<String, bool>,
@@ -31,7 +31,7 @@ impl Device {
         Device { wires, values, gates_by_output }
     }
 
-    pub fn solve(&mut self) -> usize {
+    pub fn solve(&mut self) -> DeviceOutput {
         let all_z_wires: Vec<_> = self.wires.iter().filter(|w| w.starts_with('z')).collect();
         let mut current_wires = all_z_wires.clone();
 
@@ -54,6 +54,22 @@ impl Device {
         self.wireset_value("z")
     }
 
+    pub fn find_connections(&self, target_wire: &str) -> HashSet<String> {
+        let mut connections = HashSet::new();
+
+        let mut wire_stack = vec![target_wire];
+        while let Some(wire) = wire_stack.pop() {
+            connections.insert(wire.to_string());
+
+            if let Some(gate) = self.gates_by_output.get(wire) {
+                wire_stack.push(gate.left_input());
+                wire_stack.push(gate.right_input());
+            }
+        }
+
+        connections
+    }
+
     fn evaluate_gate(&self, gate: &Gate) -> Option<bool> {
         let left = self.values.get(&gate.left_input)?;
         let right = self.values.get(&gate.right_input)?;
@@ -68,18 +84,64 @@ impl Device {
         Some(output)
     }
 
-    pub fn expected_output(&self) -> usize {
+    pub fn expected_output(&self) -> DeviceOutput {
         let xs_value = self.wireset_value("x");
         let ys_value = self.wireset_value("y");
 
-        xs_value + ys_value
+        let zs_value = xs_value.to_usize() + ys_value.to_usize();
+        
+        DeviceOutput::from_usize(zs_value)
     }
 
-    fn wireset_value(&self, prefix: &str) -> usize {
-        let mut result = 0;
-
+    fn wireset_value(&self, prefix: &str) -> DeviceOutput {
+        let mut result = HashMap::new();
+        
         for wire in self.wires.iter().filter(|w| w.starts_with(prefix)) {
             let value = self.values.get(wire).expect("wire must have a value");
+            result.insert(wire.to_string(), *value);
+        }
+
+        DeviceOutput::new(result)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DeviceOutput {
+    values: HashMap<String, bool>
+}
+
+impl DeviceOutput {
+    pub fn new(values: HashMap<String, bool>) -> DeviceOutput {
+        DeviceOutput { values }
+    }
+
+    pub fn from_usize(numeric_value: usize) -> DeviceOutput {
+        let mut values = HashMap::new();
+
+        let mut numeric_value = numeric_value;
+        let mut n = 0;
+        while numeric_value != 0 {
+            let bool = numeric_value & 1 == 1;
+            let wire = format!("z{:0>2}", n).to_string();
+
+            values.insert(wire, bool);
+
+            n += 1;
+
+            numeric_value >>= 1;
+        }
+
+        DeviceOutput::new(values)
+    }
+    
+    pub fn get(&self, wire: &str) -> Option<bool> {
+        self.values.get(wire).cloned()
+    }
+
+    pub fn to_usize(&self) -> usize {
+        let mut result = 0;
+
+        for (wire, value) in self.values.iter() {
             if *value {
                 let n: u32 = wire[1..].parse().expect("wire must end in integer");
                 let value = 2_usize.pow(n);
@@ -89,6 +151,26 @@ impl Device {
         }
 
         result
+    }
+
+    pub fn difference(&self, other: &DeviceOutput) -> DeviceOutput {
+        let mut difference = HashMap::new();
+
+        for (wire, value) in self.values.iter() {
+            let other_value = other.get(wire).expect("wires must be present in both outputs");
+            difference.insert(wire.to_string(), value ^ other_value);
+        }
+
+        DeviceOutput::new(difference)
+    }
+
+    pub fn trues(&self) -> Vec<String> {
+        let mut trues: Vec<_> = self.values.iter()
+            .filter_map(|(w, v)| v.then(|| w.to_string()))
+            .collect();
+        trues.sort();
+
+        trues
     }
 }
 
@@ -101,6 +183,10 @@ pub struct PuzzleInput {
 impl PuzzleInput {
     pub fn new(initial_values: HashMap<String, bool>, gates: Vec<Gate>) -> PuzzleInput {
         PuzzleInput { initial_values, gates }
+    }
+
+    pub fn to_device(&self) -> Device {
+        Device::new(self.initial_values.clone(), self.gates.clone())
     }
 
     pub fn into_device(self) -> Device {
@@ -154,7 +240,7 @@ pub enum ParsePuzzleInputError {
     InvalidGate(#[from] ParseGateError)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Gate {
     left_input: String,
     right_input: String,
@@ -177,6 +263,10 @@ impl Gate {
 
     pub fn output(&self) -> &str {
         &self.output
+    }
+
+    pub fn operation(&self) -> GateOperation {
+        self.operation
     }
 }
 
