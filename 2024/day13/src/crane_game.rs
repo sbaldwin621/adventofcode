@@ -11,11 +11,11 @@ impl CraneGameList {
         CraneGameList { crane_games }
     }
 
-    pub fn solve(&self) -> u32 {
-        let mut total_tokens: u32 = 0;
+    pub fn solve(&self, adjustment: i64) -> i64 {
+        let mut total_tokens: i64 = 0;
         for (n, crane_game) in self.crane_games.iter().enumerate() {
-            println!("solving {}", n);
-            if let Some((a, b)) = crane_game.solve() {
+            println!("solving {:?}", crane_game);
+            if let Some((a, b)) = crane_game.solve(adjustment) {
                 println!("found solution A: {}, B: {}", a, b);
                 total_tokens += a * 3 + b;
             } else {
@@ -38,12 +38,12 @@ impl FromStr for CraneGameList {
         for captures in pattern.captures_iter(s) {
             let (_, [a_x, a_y, b_x, b_y, prize_x, prize_y]) = captures.extract();
 
-            let a_x: u32 = a_x.parse().unwrap();
-            let a_y: u32 = a_y.parse().unwrap();
-            let b_x: u32 = b_x.parse().unwrap();
-            let b_y: u32 = b_y.parse().unwrap();
-            let prize_x: u32 = prize_x.parse().unwrap();
-            let prize_y: u32 = prize_y.parse().unwrap();
+            let a_x: i64 = a_x.parse().unwrap();
+            let a_y: i64 = a_y.parse().unwrap();
+            let b_x: i64 = b_x.parse().unwrap();
+            let b_y: i64 = b_y.parse().unwrap();
+            let prize_x: i64 = prize_x.parse().unwrap();
+            let prize_y: i64 = prize_y.parse().unwrap();
 
             let crane_game = CraneGame::new((a_x, a_y), (b_x, b_y), (prize_x, prize_y));
             crane_games.push(crane_game);
@@ -53,39 +53,34 @@ impl FromStr for CraneGameList {
     }
 }
 
+#[derive(Debug)]
 pub struct CraneGame {
-    button_a: (u32, u32),
-    button_b: (u32, u32),
-    prize: (u32, u32)
+    button_a: (i64, i64),
+    button_b: (i64, i64),
+    prize: (i64, i64)
 }
 
 impl CraneGame {
-    pub fn new(button_a: (u32, u32), button_b: (u32, u32), prize: (u32, u32)) -> CraneGame {
+    pub fn new(button_a: (i64, i64), button_b: (i64, i64), prize: (i64, i64)) -> CraneGame {
         CraneGame { button_a, button_b, prize }
     }
 
-    pub fn solve(&self) -> Option<(u32, u32)> {
-        let mut best_solution_cost = u32::MAX;
-        let mut best_solution = None;
-
-        for a_presses in (0..=100).rev() {
-            for b_presses in    0..=100 {
-                let cost = a_presses * 3 + b_presses;
-                let (x, y) = self.simulate_move(a_presses, b_presses);
-                if (x, y) == self.prize && cost < best_solution_cost {
-                    best_solution_cost = cost;
-                    best_solution = Some((a_presses, b_presses));
-                }
-            }
-        }
-
-        best_solution
-    }
-    
-    fn simulate_move(&self, a_presses: u32, b_presses: u32) -> (u32, u32) {
+    pub fn solve(&self, adjustment: i64) -> Option<(i64, i64)> {
         let (a_x, a_y) = self.button_a;
         let (b_x, b_y) = self.button_b;
-
-        (a_x * a_presses + b_x * b_presses, a_y * a_presses + b_y * b_presses)
+        
+        let target_x = self.prize.0 + adjustment;
+        let target_y = self.prize.1 + adjustment;
+        
+        let b = (target_y * a_x - target_x * a_y) / (b_y * a_x - a_y * b_x);
+        let a = (target_x - b_x * b) / a_x;
+        
+        let result_x = a_x * a + b_x * b;
+        let result_y = a_y * a + b_y * b;
+        if result_x == target_x && result_y == target_y {
+            Some((a, b))
+        } else {
+            None
+        }
     }
 }

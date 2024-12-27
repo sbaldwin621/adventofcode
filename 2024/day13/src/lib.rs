@@ -23,21 +23,23 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
     let result = match options.part {
         1 => run_part1(&crane_game_list),
-        2 => run_part2(),
+        2 => run_part2(&crane_game_list),
         _ => Err(ApplicationError::UnknownPart)
     }?;
     
     Ok(result.to_string())
 }
 
-fn run_part1(crane_game_list: &CraneGameList) -> Result<u32, ApplicationError> {
-    let total_tokens = crane_game_list.solve();
+fn run_part1(crane_game_list: &CraneGameList) -> Result<i64, ApplicationError> {
+    let total_tokens = crane_game_list.solve(0);
     
     Ok(total_tokens)
 }
 
-fn run_part2() -> Result<u32, ApplicationError> {
-    todo!()
+fn run_part2(crane_game_list: &CraneGameList) -> Result<i64, ApplicationError> {
+    let total_tokens = crane_game_list.solve(10000000000000);
+    
+    Ok(total_tokens)
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
