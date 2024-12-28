@@ -11,6 +11,4 @@ fn main() {
         println!("Application error: {}", err);
         process::exit(1);
     });
-    
-    println!("{}", result);
 }

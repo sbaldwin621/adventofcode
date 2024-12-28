@@ -4,6 +4,58 @@ use std::str::FromStr;
 
 use thiserror::Error;
 
+pub fn search_for_quine(debugger_info: &DebuggerInfo) -> Option<usize> {
+    let original_program = debugger_info.original_program();
+    let len = original_program.len();
+
+    let mut solutions = vec![];
+
+    let mut walkers = vec![
+        Walker { i: 0, base_guess: 0 }
+    ];
+
+    while let Some(Walker { i, base_guess }) = walkers.pop() {
+        println!("{}, {}", i, base_guess);
+
+        if i < original_program.len() {
+            for n in 0..8 {
+                let guess = base_guess * 8 + n;
+    
+                let mut emulator = Emulator::from_debugger_info(&debugger_info);
+                *emulator.register_a_mut() = guess;
+    
+                while emulator.step() { }
+    
+                let output = emulator.output_buffer();
+                if output.eq(original_program) {
+                    solutions.push(guess);
+                } else {
+                    if output[0] == original_program[len - i - 1] {
+                        println!("{} for {:?}", guess, output);
+                        walkers.push(Walker { i: i + 1, base_guess: guess })
+                    }
+                }   
+            }
+        }
+    }
+    
+    println!("solutions found: {:?}", solutions);
+
+    if solutions.is_empty() {
+        None
+    } else {
+        solutions.sort();
+
+        Some(solutions[0])
+    }
+
+}
+
+struct Walker {
+    i: usize,
+    base_guess: usize
+}
+
 #[derive(Debug)]
 pub struct DebuggerInfo {
     register_a: usize,
