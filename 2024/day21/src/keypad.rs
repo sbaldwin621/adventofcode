@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::iter::once;
 use std::str::FromStr;
+use std::usize;
 
 use itertools::{chain, Itertools};
 use thiserror::Error;
@@ -14,20 +15,22 @@ pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
         keypads.push(Keypad::directional_keypad());
     }
 
-    let mut current_codes = HashSet::new();
-    current_codes.insert(code.to_string());
-
+    let mut current_codes = vec![code.to_string()];
+    
     for (n, keypad) in keypads.iter().enumerate() {
         println!("keypad {}: {:?}", n, current_codes.iter().take(1).collect::<Vec<_>>()[0].len());
 
-        let mut next_codes = HashSet::new();
+        let mut solutions = vec![];
         for code in current_codes {
-            for next_code in keypad.solve_code(&code) {
-                next_codes.insert(next_code);
-            }
+            let solution = keypad.solve_code(&code);
+            solutions.push(solution);
         }
 
-        current_codes = keep_shortest(next_codes);
+        let lowest_cost = solutions.iter().map(|s| s.cost).min().unwrap();
+        let best_solutions = solutions.iter().filter(|s| s.cost == lowest_cost);
+        let next_codes: Vec<_> = best_solutions.flat_map(|s| s.codes()).collect();
+
+        current_codes = next_codes;
     }
 
     let shortest_code = current_codes.iter().next().unwrap();
@@ -267,41 +270,69 @@ impl Keypad {
             }
         }
 
-        // println!("{:?}", best_paths);
-
         best_paths
     }
 
-    pub fn solve_code(&self, code: &str) -> Vec<String> {
-        println!("solve code {}", code);
-
-        let mut current_results = HashSet::new();
-        current_results.insert(String::new());
+    pub fn solve_code(&self, code: &str) -> CodeSolution {
+        // println!("solve code {}", code);
         
+        let mut results = vec![];
+
         let mut current_char = 'A';
         for char in code.chars() {
-            let mut next_results = HashSet::new();
-
+            let mut char_results = vec![];
             for path in self.solve_path(current_char, char) {
                 let subcode = path_to_code(&path);
 
-                for result in current_results.iter() {
-                    let mut builder = result.clone();
-                    builder.push_str(&subcode);
-                    
-                    next_results.insert(builder);
+                char_results.push(subcode);
+            }
+
+            results.push(char_results);
+            current_char = char;
+        }
+        
+        CodeSolution::new(results)
+    }
+}
+
+#[derive(Debug)]
+struct CodeSolution {
+    results: Vec<Vec<String>>,
+    cost: usize
+}
+
+impl CodeSolution {
+    pub fn new(results: Vec<Vec<String>>) -> CodeSolution {
+        let mut first_code = String::new();
+
+        for segments in results.iter() {
+            first_code.push_str(&segments.iter().next().unwrap());
+        }
+
+        let cost = cost_of_path(&first_code);
+
+        CodeSolution { results, cost }
+    }
+
+    pub fn codes(&self) -> Vec<String> {
+        let mut current_codes = vec![String::new()];
+
+        for segments in self.results.iter() {
+            let mut next_codes = vec![];
+
+            for segment in segments.iter() {
+                for code in current_codes.iter() {
+                    let mut builder = code.clone();
+                    builder.push_str(&segment);
+
+                    next_codes.push(builder);
                 }
             }
 
-            current_results = keep_shortest(next_results);
-            current_char = char;
+            current_codes = next_codes;
         }
 
-        let result: Vec<String> = current_results.into_iter().collect();
-
-        println!("{} -> {:?}", result[0].len(), result);
-        
-        result
+        current_codes
     }
 }
 
@@ -462,7 +493,7 @@ mod tests {
 
     #[test]
     pub fn cost() {
-        println!("{:?}", cost_of_path("<A>A<AAv<AA>>^AvAA^Av<AAA^>A"));
+        assert_eq!(cost_of_path("<A") + cost_of_path(">A<AAv<AA>>^AvAA^Av<AAA^>A"), cost_of_path("<A>A<AAv<AA>>^AvAA^Av<AAA^>A"));
     }
 
     #[test]
