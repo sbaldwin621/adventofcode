@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::iter::once;
 use std::str::FromStr;
 
+use itertools::{chain, Itertools};
 use thiserror::Error;
 
 pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
@@ -41,9 +43,48 @@ pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
 
 fn keep_shortest(set: HashSet<String>) -> HashSet<String> {
     let shortest_len = set.iter().map(|c| c.len()).min().unwrap();
-    let result: HashSet<_> = set.into_iter().filter(|c| c.len() == shortest_len).take(1).collect();
+    let result: HashSet<_> = set.into_iter().filter(|c| c.len() == shortest_len).collect();
 
     result
+}
+
+fn cost_of_path(path: &str) -> usize {
+    let mut total_cost = 0;
+
+    for (a, b) in chain!(once('A'), path.chars()).tuple_windows() {
+        let cost = match (a, b) {
+            ('A', '^') => 2,
+            ('A', '>') => 2,
+            ('A', 'v') => 3,
+            ('A', '<') => 4,
+            ('A', 'A') => 1,
+            ('^', '^') => 1,
+            ('^', '>') => 3,
+            ('^', 'v') => 2,
+            ('^', '<') => 3,
+            ('^', 'A') => 2,
+            ('>', '^') => 3,
+            ('>', '>') => 1,
+            ('>', 'v') => 2,
+            ('>', '<') => 3,
+            ('>', 'A') => 2,
+            ('v', '^') => 2,
+            ('v', '>') => 2,
+            ('v', 'v') => 1,
+            ('v', '<') => 2,
+            ('v', 'A') => 3,
+            ('<', '^') => 3,
+            ('<', '>') => 3,
+            ('<', 'v') => 2,
+            ('<', '<') => 1,
+            ('<', 'A') => 4,
+            _ => panic!("{} -> {}", a, b)
+        };
+
+        total_cost += cost;
+    }
+
+    total_cost
 }
 
 pub fn simulate(code: &str) -> Option<String> {
@@ -191,7 +232,7 @@ impl Keypad {
         let start_pos = self.get_pos_for_key(start).unwrap();
         let goal_pos = self.get_pos_for_key(goal).unwrap();
         
-        let mut best_scores = HashMap::new();
+        // let mut best_scores = HashMap::new();
 
         let mut walkers = vec![KeypadWalker::new(start_pos)];
         let mut completed = vec![];
@@ -203,15 +244,10 @@ impl Keypad {
                 for &direction in DIRECTIONS {
                     if let Some(next_walker) = walker.move_one(direction) {
                         if let Some(next_key) = self.get_key_for_pos(next_walker.pos()) {
-                            let best_score = best_scores.get(next_walker.pos()).cloned().unwrap_or(usize::MAX);
-                            if next_walker.score() <= best_score {
-                                best_scores.insert(*next_walker.pos(), next_walker.score());
-
-                                if next_key == goal {
-                                    completed.push(next_walker);
-                                } else {
-                                    next_walkers.push(next_walker);
-                                }
+                            if next_key == goal {
+                                completed.push(next_walker);
+                            } else {
+                                next_walkers.push(next_walker);
                             }
                         }
                     }                    
@@ -221,19 +257,24 @@ impl Keypad {
             walkers = next_walkers;
         }
         
-        let best_score = *best_scores.get(&goal_pos).unwrap();
+        let best_score = completed.iter().map(|w| w.final_score()).min().unwrap();        
 
         let mut best_paths = vec![];
         for walker in completed.into_iter() {
-            if walker.score() == best_score {
+            if walker.final_score() == best_score {
+                // println!("{:?}", walker);
                 best_paths.push(walker.into_path());
             }
         }
+
+        // println!("{:?}", best_paths);
 
         best_paths
     }
 
     pub fn solve_code(&self, code: &str) -> Vec<String> {
+        println!("solve code {}", code);
+
         let mut current_results = HashSet::new();
         current_results.insert(String::new());
         
@@ -256,7 +297,11 @@ impl Keypad {
             current_char = char;
         }
 
-        current_results.into_iter().collect()
+        let result: Vec<String> = current_results.into_iter().collect();
+
+        println!("{} -> {:?}", result[0].len(), result);
+        
+        result
     }
 }
 
@@ -289,6 +334,20 @@ impl KeypadWalker {
         self.score
     }
 
+    pub fn final_score(&self) -> usize {
+        let final_move_cost = match self.facing {
+            Some(Direction::North) => 2,
+            Some(Direction::East)  => 2,
+            Some(Direction::South) => 3,
+            Some(Direction::West)  => 4,
+            None => 0,
+        };
+
+        // let final_move_cost = 0;
+
+        self.score + final_move_cost
+    }
+
     pub fn into_path(self) -> Vec<Direction> {
         self.path
     }
@@ -300,15 +359,36 @@ impl KeypadWalker {
             return None;
         }
 
-        let score = if let Some(cur_facing) = self.facing {
-            if cur_facing == direction {
-                self.score + 1
-            } else {
-                self.score + 2
-            }
-        } else {
-            self.score + 1
+        // let cost = match self.facing {
+        //     None => 1,
+        //     Some(facing) if facing == direction => 1,
+        //     _ => 2
+        // };
+
+        let cost = match (self.facing, direction) {
+            (None,                   Direction::North) => 2,
+            (None,                   Direction::East)  => 2,
+            (None,                   Direction::South) => 3,
+            (None,                   Direction::West)  => 4,
+            (Some(Direction::North), Direction::North) => 1,
+            (Some(Direction::North), Direction::East)  => 3,
+            (Some(Direction::North), Direction::South) => return None,
+            (Some(Direction::North), Direction::West)  => 3,
+            (Some(Direction::East),  Direction::North) => 3,
+            (Some(Direction::East),  Direction::East)  => 1,
+            (Some(Direction::East),  Direction::South) => 2,
+            (Some(Direction::East),  Direction::West)  => return None,
+            (Some(Direction::South), Direction::North) => return None,
+            (Some(Direction::South), Direction::East)  => 2,
+            (Some(Direction::South), Direction::South) => 1,
+            (Some(Direction::South), Direction::West)  => 2,
+            (Some(Direction::West),  Direction::North) => 3,
+            (Some(Direction::West),  Direction::East)  => return None,
+            (Some(Direction::West),  Direction::South) => 2,
+            (Some(Direction::West),  Direction::West)  => 1
         };
+
+        let score = self.score + cost;
 
         let mut path = self.path.clone();
         path.push(direction);
@@ -381,8 +461,13 @@ mod tests {
     use super::*;
 
     #[test]
+    pub fn cost() {
+        println!("{:?}", cost_of_path("<A>A<AAv<AA>>^AvAA^Av<AAA^>A"));
+    }
+
+    #[test]
     pub fn example5() {
-        solve("379A");
+        solve("379A", 2);
     }
 
     #[test]
