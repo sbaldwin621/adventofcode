@@ -2,7 +2,6 @@ use std::fs;
 use std::io;
 
 use clap::Parser;
-use keypad::simulate;
 use keypad::solve;
 use thiserror::Error;
 

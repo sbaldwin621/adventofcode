@@ -1,8 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
 use std::usize;
-
-use thiserror::Error;
 
 pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
     let mut keypads = vec![
@@ -54,7 +51,7 @@ fn solve_segment(code: &str, keypads: &Vec<Keypad>, keypad_i: usize, cache: &mut
         };
 
         cache.insert(cache_key, value);
-
+        
         value
     }
 }
@@ -238,7 +235,7 @@ impl Keypad {
 
                 char_results.push(subcode);
             }
-
+            
             results.push(char_results);
             current_char = char;
         }
@@ -291,12 +288,6 @@ impl KeypadWalker {
 
         Some(KeypadWalker { pos, path, visited })
     }
-}
-
-#[derive(Debug, Error)]
-pub enum ParseInstructionError {
-    #[error("invalid instruction")]
-    InvalidInstruction
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
