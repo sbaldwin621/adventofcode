@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::iter::once;
 use std::str::FromStr;
 use std::usize;
@@ -7,6 +7,50 @@ use itertools::{chain, Itertools};
 use thiserror::Error;
 
 pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
+    let mut keypads = vec![
+        Keypad::numeric_keypad()
+    ];
+
+    for _ in 0..directional_keypad_count {
+        keypads.push(Keypad::directional_keypad());
+    }
+
+    let solution = solve_segment(code, &keypads, 0);
+
+    let value = code_numeric_value(code).unwrap();
+    let complexity = solution * value;
+
+    println!("{}: {}", code, solution);
+    println!("{}: {} * {} = {}", code, solution, value, complexity);
+
+    complexity
+}
+
+fn solve_segment(code: &str, keypads: &Vec<Keypad>, keypad_i: usize) -> usize {
+    if let Some(keypad) = keypads.get(keypad_i) {
+        let solution = keypad.solve_code(&code);
+        let mut accum = 0;
+
+        for segment in solution.segments {
+            let mut best_score = usize::MAX;
+
+            for code in segment {
+                let score = solve_segment(&code, keypads, keypad_i + 1);
+                if score < best_score {
+                    best_score = score;
+                }
+            }
+
+            accum += best_score;
+        }
+
+        accum
+    } else {
+        code.len()
+    }
+}
+
+pub fn old_solve(code: &str, directional_keypad_count: usize) -> usize {
     let mut keypads = vec![
         Keypad::numeric_keypad()
     ];
@@ -26,8 +70,10 @@ pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
             solutions.push(solution);
         }
 
+        println!("{:?}", solutions.iter().map(|s| s.cost).collect::<Vec<_>>());
+
         let lowest_cost = solutions.iter().map(|s| s.cost).min().unwrap();
-        let best_solutions = solutions.iter().filter(|s| s.cost == lowest_cost);
+        let best_solutions = solutions.iter().filter(|s| s.cost() == lowest_cost);
         let next_codes: Vec<_> = best_solutions.flat_map(|s| s.codes()).collect();
 
         current_codes = next_codes;
@@ -273,7 +319,7 @@ impl Keypad {
         best_paths
     }
 
-    pub fn solve_code(&self, code: &str) -> CodeSolution {
+    pub fn solve_code(&self, code: &str) -> CompoundCode {
         // println!("solve code {}", code);
         
         let mut results = vec![];
@@ -291,33 +337,67 @@ impl Keypad {
             current_char = char;
         }
         
-        CodeSolution::new(results)
+        CompoundCode::new(results)
+    }
+
+    pub fn solve_compound_code(&self, compound_code: &CompoundCode) -> CompoundCode {
+        let mut results = vec![];
+
+        for segment in compound_code.segments().iter() {
+            let mut segment_results = vec![];
+
+            for code in segment.iter() {
+                let solution = self.solve_code(code);
+                for solution_segment in solution.segments().iter() {
+                    segment_results.push(solution_segment.clone());
+                }
+            }
+
+            for segment_result in segment_results {
+                results.push(segment_result);
+            }
+        }
+
+        CompoundCode::new(results)
     }
 }
 
 #[derive(Debug)]
-struct CodeSolution {
-    results: Vec<Vec<String>>,
+pub struct CompoundCode {
+    segments: Vec<Vec<String>>,
+    first_code: String,
     cost: usize
 }
 
-impl CodeSolution {
-    pub fn new(results: Vec<Vec<String>>) -> CodeSolution {
+impl CompoundCode {
+    pub fn new(segments: Vec<Vec<String>>) -> CompoundCode {
         let mut first_code = String::new();
 
-        for segments in results.iter() {
+        for segments in segments.iter() {
             first_code.push_str(&segments.iter().next().unwrap());
         }
 
         let cost = cost_of_path(&first_code);
 
-        CodeSolution { results, cost }
+        CompoundCode { segments, first_code, cost }
+    }
+
+    pub fn first_code(&self) -> &str {
+        &self.first_code
+    }
+
+    pub fn cost(&self) -> usize {
+        self.cost
+    }
+
+    pub fn segments(&self) -> &Vec<Vec<String>>  {
+        &self.segments
     }
 
     pub fn codes(&self) -> Vec<String> {
         let mut current_codes = vec![String::new()];
 
-        for segments in self.results.iter() {
+        for segments in self.segments.iter() {
             let mut next_codes = vec![];
 
             for segment in segments.iter() {
@@ -498,7 +578,24 @@ mod tests {
 
     #[test]
     pub fn example5() {
-        solve("379A", 2);
+        solve("379A", 25);
+    }
+
+    #[test]
+    pub fn example5_broken_down() {
+        let numeric_keypad = Keypad::numeric_keypad();
+        let directional_keypad = Keypad::directional_keypad();
+
+        let numeric_solution = numeric_keypad.solve_code("379A");
+
+        println!("{:?}", numeric_solution);
+        let code_solution_1 = directional_keypad.solve_code(&numeric_solution.first_code());
+        let code_solution_2 = directional_keypad.solve_compound_code(&numeric_solution);
+        // let code_solution = directional_keypad.solve_code(&numeric_solution.first_code());
+        println!("{:?}", code_solution_1);
+        println!("{:?}", code_solution_2);
+
+        //println!("{:?}", numeric_keypad.simulate(&directional_keypad.simulate(code_solution.first_code()).unwrap()));
     }
 
     #[test]
