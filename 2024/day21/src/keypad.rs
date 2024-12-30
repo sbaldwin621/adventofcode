@@ -215,11 +215,11 @@ impl Keypad {
             walkers = next_walkers;
         }
         
-        let best_score = completed.iter().map(|w| w.final_score()).min().unwrap();        
+        let best_score = completed.iter().map(|w| w.len()).min().unwrap();        
 
         let mut best_paths = vec![];
         for walker in completed.into_iter() {
-            if walker.final_score() == best_score {
+            if walker.len() == best_score {
                 best_paths.push(walker.into_path());
             }
         }
@@ -250,42 +250,26 @@ impl Keypad {
 #[derive(Debug)]
 struct KeypadWalker {
     pos: Position,
-    facing: Option<Direction>,
     path: Vec<Direction>,
-    visited: HashSet<Position>,
-    score: usize
+    visited: HashSet<Position>
 }
 
 impl KeypadWalker {
     pub fn new(pos: Position) -> KeypadWalker {
-        let facing = None;
         let path = vec![];
-        let score = 0;
 
         let mut visited = HashSet::new();
         visited.insert(pos);
 
-        KeypadWalker { pos, facing, path, visited, score }
+        KeypadWalker { pos, path, visited }
     }
     
     pub fn pos(&self) -> &Position {
         &self.pos
     }
 
-    pub fn score(&self) -> usize {
-        self.score
-    }
-
-    pub fn final_score(&self) -> usize {
-        let final_move_cost = match self.facing {
-            Some(Direction::North) => 2,
-            Some(Direction::East)  => 2,
-            Some(Direction::South) => 3,
-            Some(Direction::West)  => 4,
-            None => 0,
-        };
-        
-        self.score + final_move_cost
+    pub fn len(&self) -> usize {
+        self.path.len()
     }
 
     pub fn into_path(self) -> Vec<Direction> {
@@ -299,61 +283,13 @@ impl KeypadWalker {
             return None;
         }
 
-        let cost = match (self.facing, direction) {
-            (None,                   Direction::North) => 2,
-            (None,                   Direction::East)  => 2,
-            (None,                   Direction::South) => 3,
-            (None,                   Direction::West)  => 4,
-            (Some(Direction::North), Direction::North) => 1,
-            (Some(Direction::North), Direction::East)  => 3,
-            (Some(Direction::North), Direction::South) => return None,
-            (Some(Direction::North), Direction::West)  => 3,
-            (Some(Direction::East),  Direction::North) => 3,
-            (Some(Direction::East),  Direction::East)  => 1,
-            (Some(Direction::East),  Direction::South) => 2,
-            (Some(Direction::East),  Direction::West)  => return None,
-            (Some(Direction::South), Direction::North) => return None,
-            (Some(Direction::South), Direction::East)  => 2,
-            (Some(Direction::South), Direction::South) => 1,
-            (Some(Direction::South), Direction::West)  => 2,
-            (Some(Direction::West),  Direction::North) => 3,
-            (Some(Direction::West),  Direction::East)  => return None,
-            (Some(Direction::West),  Direction::South) => 2,
-            (Some(Direction::West),  Direction::West)  => 1
-        };
-
-        let score = self.score + cost;
-
         let mut path = self.path.clone();
         path.push(direction);
 
         let mut visited = self.visited.clone();
         visited.insert(pos);
 
-        let facing = Some(direction);
-
-        Some(KeypadWalker { pos, facing, path, visited, score })
-    }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Instruction {
-    Move(Direction),
-    PressButton
-}
-
-impl FromStr for Instruction {
-    type Err = ParseInstructionError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "^" => Ok(Instruction::Move(Direction::North)),
-            ">" => Ok(Instruction::Move(Direction::East)),
-            "v" => Ok(Instruction::Move(Direction::South)),
-            "<" => Ok(Instruction::Move(Direction::West)),
-            "A" => Ok(Instruction::PressButton),
-            _ => Err(ParseInstructionError::InvalidInstruction)
-        }
+        Some(KeypadWalker { pos, path, visited })
     }
 }
 
