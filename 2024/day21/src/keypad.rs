@@ -1,9 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::once;
 use std::str::FromStr;
 use std::usize;
 
-use itertools::{chain, Itertools};
 use thiserror::Error;
 
 pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
@@ -15,7 +13,9 @@ pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
         keypads.push(Keypad::directional_keypad());
     }
 
-    let solution = solve_segment(code, &keypads, 0);
+    let mut cache = HashMap::new();
+
+    let solution = solve_segment(code, &keypads, 0, &mut cache);
 
     let value = code_numeric_value(code).unwrap();
     let complexity = solution * value;
@@ -26,114 +26,37 @@ pub fn solve(code: &str, directional_keypad_count: usize) -> usize {
     complexity
 }
 
-fn solve_segment(code: &str, keypads: &Vec<Keypad>, keypad_i: usize) -> usize {
-    if let Some(keypad) = keypads.get(keypad_i) {
-        let solution = keypad.solve_code(&code);
-        let mut accum = 0;
-
-        for segment in solution.segments {
-            let mut best_score = usize::MAX;
-
-            for code in segment {
-                let score = solve_segment(&code, keypads, keypad_i + 1);
-                if score < best_score {
-                    best_score = score;
-                }
-            }
-
-            accum += best_score;
-        }
-
-        accum
+fn solve_segment(code: &str, keypads: &Vec<Keypad>, keypad_i: usize, cache: &mut HashMap<(usize, String), usize>) -> usize {
+    let cache_key = (keypad_i, code.to_string());
+    if let Some(value) = cache.get(&cache_key) {
+        *value
     } else {
-        code.len()
-    }
-}
-
-pub fn old_solve(code: &str, directional_keypad_count: usize) -> usize {
-    let mut keypads = vec![
-        Keypad::numeric_keypad()
-    ];
-
-    for _ in 0..directional_keypad_count {
-        keypads.push(Keypad::directional_keypad());
-    }
-
-    let mut current_codes = vec![code.to_string()];
-    
-    for (n, keypad) in keypads.iter().enumerate() {
-        println!("keypad {}: {:?}", n, current_codes.iter().take(1).collect::<Vec<_>>()[0].len());
-
-        let mut solutions = vec![];
-        for code in current_codes {
+        let value = if let Some(keypad) = keypads.get(keypad_i) {
             let solution = keypad.solve_code(&code);
-            solutions.push(solution);
-        }
-
-        println!("{:?}", solutions.iter().map(|s| s.cost).collect::<Vec<_>>());
-
-        let lowest_cost = solutions.iter().map(|s| s.cost).min().unwrap();
-        let best_solutions = solutions.iter().filter(|s| s.cost() == lowest_cost);
-        let next_codes: Vec<_> = best_solutions.flat_map(|s| s.codes()).collect();
-
-        current_codes = next_codes;
-    }
-
-    let shortest_code = current_codes.iter().next().unwrap();
-
-    let value = code_numeric_value(code).unwrap();
-    let complexity = shortest_code.len() * value;
-
-    println!("{}: {}", code, shortest_code);
-    println!("{}: {} * {} = {}", code, shortest_code.len(), value, complexity);
-
-    complexity
-}
-
-fn keep_shortest(set: HashSet<String>) -> HashSet<String> {
-    let shortest_len = set.iter().map(|c| c.len()).min().unwrap();
-    let result: HashSet<_> = set.into_iter().filter(|c| c.len() == shortest_len).collect();
-
-    result
-}
-
-fn cost_of_path(path: &str) -> usize {
-    let mut total_cost = 0;
-
-    for (a, b) in chain!(once('A'), path.chars()).tuple_windows() {
-        let cost = match (a, b) {
-            ('A', '^') => 2,
-            ('A', '>') => 2,
-            ('A', 'v') => 3,
-            ('A', '<') => 4,
-            ('A', 'A') => 1,
-            ('^', '^') => 1,
-            ('^', '>') => 3,
-            ('^', 'v') => 2,
-            ('^', '<') => 3,
-            ('^', 'A') => 2,
-            ('>', '^') => 3,
-            ('>', '>') => 1,
-            ('>', 'v') => 2,
-            ('>', '<') => 3,
-            ('>', 'A') => 2,
-            ('v', '^') => 2,
-            ('v', '>') => 2,
-            ('v', 'v') => 1,
-            ('v', '<') => 2,
-            ('v', 'A') => 3,
-            ('<', '^') => 3,
-            ('<', '>') => 3,
-            ('<', 'v') => 2,
-            ('<', '<') => 1,
-            ('<', 'A') => 4,
-            _ => panic!("{} -> {}", a, b)
+            let mut accum = 0;
+    
+            for segment in solution {
+                let mut best_score = usize::MAX;
+    
+                for code in segment {
+                    let score = solve_segment(&code, keypads, keypad_i + 1, cache);                
+                    if score < best_score {
+                        best_score = score;
+                    }
+                }
+    
+                accum += best_score;
+            }            
+    
+            accum
+        } else {
+            code.len()
         };
 
-        total_cost += cost;
-    }
+        cache.insert(cache_key, value);
 
-    total_cost
+        value
+    }
 }
 
 pub fn simulate(code: &str) -> Option<String> {
@@ -173,17 +96,6 @@ fn path_to_code(path: &Vec<Direction>) -> String {
     s.push('A');
 
     s
-}
-
-fn code_to_instructions(code: &str) -> Result<Vec<Instruction>, ParseInstructionError> {
-    let mut result = vec![];
-
-    for char in code.chars() {
-        let instruction: Instruction = char.to_string().parse()?;
-        result.push(instruction);
-    }
-
-    Ok(result)
 }
 
 #[derive(Debug)]
@@ -279,10 +191,7 @@ impl Keypad {
         }
 
         let start_pos = self.get_pos_for_key(start).unwrap();
-        let goal_pos = self.get_pos_for_key(goal).unwrap();
         
-        // let mut best_scores = HashMap::new();
-
         let mut walkers = vec![KeypadWalker::new(start_pos)];
         let mut completed = vec![];
 
@@ -311,7 +220,6 @@ impl Keypad {
         let mut best_paths = vec![];
         for walker in completed.into_iter() {
             if walker.final_score() == best_score {
-                // println!("{:?}", walker);
                 best_paths.push(walker.into_path());
             }
         }
@@ -319,9 +227,7 @@ impl Keypad {
         best_paths
     }
 
-    pub fn solve_code(&self, code: &str) -> CompoundCode {
-        // println!("solve code {}", code);
-        
+    pub fn solve_code(&self, code: &str) -> Vec<Vec<String>> {
         let mut results = vec![];
 
         let mut current_char = 'A';
@@ -337,82 +243,7 @@ impl Keypad {
             current_char = char;
         }
         
-        CompoundCode::new(results)
-    }
-
-    pub fn solve_compound_code(&self, compound_code: &CompoundCode) -> CompoundCode {
-        let mut results = vec![];
-
-        for segment in compound_code.segments().iter() {
-            let mut segment_results = vec![];
-
-            for code in segment.iter() {
-                let solution = self.solve_code(code);
-                for solution_segment in solution.segments().iter() {
-                    segment_results.push(solution_segment.clone());
-                }
-            }
-
-            for segment_result in segment_results {
-                results.push(segment_result);
-            }
-        }
-
-        CompoundCode::new(results)
-    }
-}
-
-#[derive(Debug)]
-pub struct CompoundCode {
-    segments: Vec<Vec<String>>,
-    first_code: String,
-    cost: usize
-}
-
-impl CompoundCode {
-    pub fn new(segments: Vec<Vec<String>>) -> CompoundCode {
-        let mut first_code = String::new();
-
-        for segments in segments.iter() {
-            first_code.push_str(&segments.iter().next().unwrap());
-        }
-
-        let cost = cost_of_path(&first_code);
-
-        CompoundCode { segments, first_code, cost }
-    }
-
-    pub fn first_code(&self) -> &str {
-        &self.first_code
-    }
-
-    pub fn cost(&self) -> usize {
-        self.cost
-    }
-
-    pub fn segments(&self) -> &Vec<Vec<String>>  {
-        &self.segments
-    }
-
-    pub fn codes(&self) -> Vec<String> {
-        let mut current_codes = vec![String::new()];
-
-        for segments in self.segments.iter() {
-            let mut next_codes = vec![];
-
-            for segment in segments.iter() {
-                for code in current_codes.iter() {
-                    let mut builder = code.clone();
-                    builder.push_str(&segment);
-
-                    next_codes.push(builder);
-                }
-            }
-
-            current_codes = next_codes;
-        }
-
-        current_codes
+        results
     }
 }
 
@@ -453,9 +284,7 @@ impl KeypadWalker {
             Some(Direction::West)  => 4,
             None => 0,
         };
-
-        // let final_move_cost = 0;
-
+        
         self.score + final_move_cost
     }
 
@@ -469,12 +298,6 @@ impl KeypadWalker {
         if self.visited.contains(&pos) {
             return None;
         }
-
-        // let cost = match self.facing {
-        //     None => 1,
-        //     Some(facing) if facing == direction => 1,
-        //     _ => 2
-        // };
 
         let cost = match (self.facing, direction) {
             (None,                   Direction::North) => 2,
@@ -572,30 +395,8 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn cost() {
-        assert_eq!(cost_of_path("<A") + cost_of_path(">A<AAv<AA>>^AvAA^Av<AAA^>A"), cost_of_path("<A>A<AAv<AA>>^AvAA^Av<AAA^>A"));
-    }
-
-    #[test]
     pub fn example5() {
         solve("379A", 25);
-    }
-
-    #[test]
-    pub fn example5_broken_down() {
-        let numeric_keypad = Keypad::numeric_keypad();
-        let directional_keypad = Keypad::directional_keypad();
-
-        let numeric_solution = numeric_keypad.solve_code("379A");
-
-        println!("{:?}", numeric_solution);
-        let code_solution_1 = directional_keypad.solve_code(&numeric_solution.first_code());
-        let code_solution_2 = directional_keypad.solve_compound_code(&numeric_solution);
-        // let code_solution = directional_keypad.solve_code(&numeric_solution.first_code());
-        println!("{:?}", code_solution_1);
-        println!("{:?}", code_solution_2);
-
-        //println!("{:?}", numeric_keypad.simulate(&directional_keypad.simulate(code_solution.first_code()).unwrap()));
     }
 
     #[test]
@@ -605,45 +406,4 @@ mod tests {
 
         assert_eq!(result, "332")
     }
-
-    // #[test]
-    // pub fn simulate2() {
-    //     let keypad = Keypad::numeric_keypad();
-    //     let result = keypad.simulate(&keypad.solve_code("357").unwrap()).unwrap();
-
-    //     assert_eq!(result, "357")
-    // }
-
-
-    // #[test]
-    // pub fn simulate3() {
-    //     let keypad = Keypad::numeric_keypad();
-    //     let keypad2 = Keypad::directional_keypad();
-    //     let keypad3 = Keypad::directional_keypad();
-
-    //     let code1 = keypad.solve_code("379A").unwrap();
-    //     let code2 = keypad2.solve_code(&code1).unwrap();
-    //     let code3 = keypad3.solve_code(&code2).unwrap();
-
-    //     println!("{}", code1);
-    //     println!("{}", code2);
-    //     println!("{}", code3);
-
-    //     let result = keypad.simulate(
-    //         &keypad2.simulate(
-    //             &keypad3.simulate(
-    //                 &code3
-    //             ).unwrap()
-    //         ).unwrap()
-    //     ).unwrap();
-
-    //     println!("{:?}", result);
-    // }
-
-    // #[test]
-    // pub fn example5() {
-    //     let result = simulate("<v<A>>^AvA^A<vA<AA>>^AAvA<^A>AAvA^A<vA>^AA<A>A<v<A>A>^AAAvA<^A>A").unwrap();
-
-    //     assert_eq!(result, "379A");
-    // }
 }
