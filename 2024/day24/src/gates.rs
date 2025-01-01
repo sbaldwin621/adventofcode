@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str::FromStr;
 
+use itertools::chain;
 use thiserror::Error;
 
 #[derive(Debug, Clone)]
@@ -50,6 +51,27 @@ impl Device {
 
     pub fn wires(&self) -> &HashSet<String> {
         &self.wires
+    }
+
+    pub fn wires_with_prefix(&self, prefix: &str) -> Vec<&String> {
+        self.wires.iter().filter(|w| w.starts_with(prefix)).collect()
+    }
+
+    pub fn swap_wires(&mut self, wire_one: &str, wire_two: &str) {
+        let gate_one = self.gates_by_output.get(wire_one).unwrap();
+        let gate_two = self.gates_by_output.get(wire_two).unwrap();
+
+        
+    }
+
+    pub fn find_output(&self, input_one: &str, input_two: &str, operation: GateOperation) -> Option<&str> {
+        let matching_gate = self.gates.iter()
+            .filter(|gate| ((gate.left_input == input_one && gate.right_input == input_two) ||
+                (gate.left_input == input_two && gate.right_input == input_one))
+                && gate.operation == operation)
+            .next();
+
+        matching_gate.map(|gate| gate.output())
     }
 
     pub fn solve(&mut self) -> DeviceOutput {
@@ -343,7 +365,7 @@ pub enum ParseGateError {
     InvalidSyntax
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GateOperation {
     And,
     Or,

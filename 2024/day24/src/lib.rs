@@ -8,8 +8,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use clap::Subcommand;
-use gates::ParsePuzzleInputError;
-use gates::PuzzleInput;
+use gates::{ParsePuzzleInputError, PuzzleInput, GateOperation};
 use thiserror::Error;
 
 mod gates;
@@ -69,63 +68,46 @@ fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
 
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
-    let mut unsolved_device = puzzle_input.into_device();
+    let mut device = puzzle_input.into_device();
 
-    let mut original_device = unsolved_device.clone();
-    let actual_output = original_device.solve();
+    let mut previous_carry = device.find_output("x00", "y00", GateOperation::And)
+        .expect("puzzle input missing initial carry gate");
 
-    let expected_output = unsolved_device.expected_output();
+    for n in 1..=44 {
+        println!("inspecting '{n}' adder (carry: {previous_carry})");
 
-    let difference = expected_output.difference(&actual_output);
-    let correct_wires: HashSet<String> = difference.falses().iter().cloned().collect();
-    let wrong_wires: HashSet<String> = difference.trues().iter().cloned().collect();
-    
-    let mut interesting_true_wires = vec![];
-    let mut interesting_false_wires = vec![];
-    for wire in unsolved_device.wires() {
-        if wire.starts_with("x") || wire.starts_with("y") {
-            continue;
-        }
+        let x = &format!("x{n:02}");
+        let y = &format!("y{n:02}");
+        let z = &format!("z{n:02}");
 
-        let value = original_device.get_value(wire).unwrap();
+        let xy_xor = device.find_output(x, y, GateOperation::Xor)
+            .expect("puzzle input missing input XOR gate");
 
-        let mut device = unsolved_device.clone();
-        device.values_mut().insert(wire.clone(), !value);
+        let xy_and = device.find_output(x, y, GateOperation::And)
+            .expect("puzzle input missing input AND gate");
 
-        let tweaked_output = device.solve();
-        let tweaked_difference = expected_output.difference(&tweaked_output);
-
-        if correct_wires.is_disjoint(&tweaked_difference.trues()) {
-            let score = tweaked_difference.trues().len();
-            // println!("wire '{}' does not affect correct wires; {} wrong outputs", wire, score);
-
-            if value {
-                interesting_true_wires.push((wire, score));
-            } else {
-                interesting_false_wires.push((wire, score));
+        if let Some(carry_xor) = device.find_output(previous_carry, xy_xor, GateOperation::Xor) {
+            if carry_xor != z {
+                panic!("{previous_carry} ^ {xy_xor} != {z}");
             }
+
+            if let Some(carry_and) = device.find_output(previous_carry, xy_xor, GateOperation::And) {
+                if let Some(next_carry) = device.find_output(carry_and, xy_and, GateOperation::Or) {
+                    previous_carry = next_carry;
+                } else {
+                    // some error
+                    todo!();
+                }
+            } else {
+                // some error
+                todo!();
+            }
+        } else {
+            // some error
+            todo!();
         }
     }
 
-    interesting_true_wires.sort_by_key(|(_, score)| *score);
-    interesting_false_wires.sort_by_key(|(_, score)| *score);
-
-    let mut device = unsolved_device.clone();
-    device.values_mut().insert(interesting_true_wires[0].0.clone(), false);
-    device.values_mut().insert(interesting_true_wires[1].0.clone(), false);
-    device.values_mut().insert(interesting_true_wires[2].0.clone(), false);
-    device.values_mut().insert(interesting_true_wires[3].0.clone(), false);
-
-    device.values_mut().insert(interesting_false_wires[0].0.clone(), true);
-    device.values_mut().insert(interesting_false_wires[1].0.clone(), true);
-    device.values_mut().insert(interesting_false_wires[2].0.clone(), true);
-    device.values_mut().insert(interesting_false_wires[3].0.clone(), true);
-    
-    let tweaked_output = device.solve();
-    let tweaked_difference = expected_output.difference(&tweaked_output);
-
-    println!("{}", tweaked_difference.trues().len());
-    
     todo!()
 }
 
@@ -168,6 +150,8 @@ fn map_upstream(input: PathBuf, target_wire: &str, depth: usize) -> Result<Strin
     let device = puzzle_input.into_device();
 
     let connections = device.find_upstream(target_wire, depth);
+    let mut connections: Vec<_> = connections.iter().collect();
+    connections.sort();
 
     println!("{:?} ({})", connections, connections.len());
 
@@ -179,6 +163,8 @@ fn map_downstream(input: PathBuf, target_wire: &str, depth: usize) -> Result<Str
     let device = puzzle_input.into_device();
 
     let connections = device.find_downstream(target_wire, depth);
+    let mut connections: Vec<_> = connections.iter().collect();
+    connections.sort();
 
     println!("{:?} ({})", connections, connections.len());
 
