@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::str::FromStr;
@@ -9,9 +10,9 @@ use thiserror::Error;
 pub struct Device {
     wires: HashSet<String>,
     values: HashMap<String, bool>,
-    gates: Vec<Rc<Gate>>,
-    gates_by_output: HashMap<String, Rc<Gate>>,
-    gates_by_input: HashMap<String, Vec<Rc<Gate>>>
+    gates: Vec<Rc<RefCell<Gate>>>,
+    gates_by_output: HashMap<String, Rc<RefCell<Gate>>>,
+    gates_by_input: HashMap<String, Vec<Rc<RefCell<Gate>>>>
 }
 
 impl Device {
@@ -25,17 +26,17 @@ impl Device {
         let mut gates_by_output = HashMap::new();
         let mut gates_by_input = HashMap::new();
 
-        let gates: Vec<Rc<Gate>> = gates.into_iter().map(|g| Rc::new(g)).collect();
+        let gates: Vec<Rc<RefCell<Gate>>> = gates.into_iter().map(|g| Rc::new(RefCell::new(g))).collect();
 
         for gate in &gates {
-            wires.insert(gate.left_input.to_string());
-            wires.insert(gate.right_input.to_string());
-            wires.insert(gate.output.to_string());
+            wires.insert(gate.borrow().left_input.to_string());
+            wires.insert(gate.borrow().right_input.to_string());
+            wires.insert(gate.borrow().output.to_string());
 
-            gates_by_input.entry(gate.left_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
-            gates_by_input.entry(gate.right_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
+            gates_by_input.entry(gate.borrow().left_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
+            gates_by_input.entry(gate.borrow().right_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
 
-            gates_by_output.insert(gate.output.to_string(), Rc::clone(gate));
+            gates_by_output.insert(gate.borrow().output.to_string(), Rc::clone(gate));
         }
 
         Device { wires, values, gates, gates_by_output, gates_by_input }
@@ -61,34 +62,35 @@ impl Device {
         let gate_one = self.gates_by_output.get(wire_one).unwrap();
         let gate_two = self.gates_by_output.get(wire_two).unwrap();
 
-        
+        gate_one.borrow_mut().output = wire_two.to_string();
+        gate_two.borrow_mut().output = wire_one.to_string();
     }
 
-    pub fn find_output(&self, input_one: &str, input_two: &str, operation: GateOperation) -> Option<&str> {
+    pub fn find_output(&self, input_one: &str, input_two: &str, operation: GateOperation) -> Option<String> {
         let matching_gate = self.gates.iter()
-            .filter(|gate| ((gate.left_input == input_one && gate.right_input == input_two) ||
-                (gate.left_input == input_two && gate.right_input == input_one))
-                && gate.operation == operation)
+            .filter(|gate| ((gate.borrow().left_input == input_one && gate.borrow().right_input == input_two) ||
+                (gate.borrow().left_input == input_two && gate.borrow().right_input == input_one))
+                && gate.borrow().operation == operation)
             .next();
 
-        matching_gate.map(|gate| gate.output())
+        matching_gate.map(|gate| gate.borrow().output().to_string())
     }
 
     pub fn solve(&mut self) -> DeviceOutput {
-        let all_z_wires: Vec<_> = self.wires.iter().filter(|w| w.starts_with('z')).collect();
-        let mut current_wires = all_z_wires.clone();
+        let all_z_wires: Vec<_> = self.wires.iter().filter(|w| w.starts_with('z')).cloned().collect();
+        let mut current_wires = all_z_wires;
 
         while let Some(wire) = current_wires.pop() {
-            if !self.values.contains_key(wire) {
-                let gate = self.gates_by_output.get(wire).expect("wire should either have a value or a gate");
-                match self.evaluate_gate(gate) {
+            if !self.values.contains_key(&wire) {
+                let gate = self.gates_by_output.get(&wire).expect("wire should either have a value or a gate");
+                match self.evaluate_gate(&gate.borrow()) {
                     Some(value) => {
                         self.values.insert(wire.to_string(), value);
                     },
                     None => {
                         current_wires.push(wire);
-                        current_wires.push(&gate.left_input);
-                        current_wires.push(&gate.right_input);
+                        current_wires.push(gate.borrow().left_input.to_string());
+                        current_wires.push(gate.borrow().right_input.to_string());
                     }
                 }
             }
@@ -100,14 +102,14 @@ impl Device {
     pub fn find_upstream(&self, target_wire: &str, depth_limit: usize) -> HashSet<String> {
         let mut connections = HashSet::new();
 
-        let mut wire_stack = vec![(target_wire, depth_limit)];
+        let mut wire_stack = vec![(target_wire.to_string(), depth_limit)];
         while let Some((wire, depth)) = wire_stack.pop() {
             connections.insert(wire.to_string());
 
             if depth > 0 {
-                if let Some(gate) = self.gates_by_output.get(wire) {
-                    wire_stack.push((gate.left_input(), depth - 1));
-                    wire_stack.push((gate.right_input(), depth - 1));
+                if let Some(gate) = self.gates_by_output.get(&wire) {
+                    wire_stack.push((gate.borrow().left_input().to_string(), depth - 1));
+                    wire_stack.push((gate.borrow().right_input().to_string(), depth - 1));
                 }
             }            
         }
@@ -118,14 +120,14 @@ impl Device {
     pub fn find_downstream(&self, target_wire: &str, depth_limit: usize) -> HashSet<String> {
         let mut connections = HashSet::new();
 
-        let mut wire_stack = vec![(target_wire, depth_limit)];
+        let mut wire_stack = vec![(target_wire.to_string(), depth_limit)];
         while let Some((wire, depth)) = wire_stack.pop() {
             connections.insert(wire.to_string());
 
             if depth > 0 {
-                if let Some(gates) = self.gates_by_input.get(wire) {
+                if let Some(gates) = self.gates_by_input.get(&wire) {
                     for gate in gates {
-                        wire_stack.push((gate.output(), depth - 1));
+                        wire_stack.push((gate.borrow().output().to_string(), depth - 1));
                     }
                 }    
             }            
@@ -169,7 +171,7 @@ impl Device {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DeviceOutput {
     values: HashMap<String, bool>
 }

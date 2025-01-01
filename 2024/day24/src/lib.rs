@@ -73,26 +73,35 @@ fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let mut previous_carry = device.find_output("x00", "y00", GateOperation::And)
         .expect("puzzle input missing initial carry gate");
 
-    for n in 1..=44 {
+    let mut swapped_wires = vec![];
+
+    let mut n = 1;
+    while n < 45 {
         println!("inspecting '{n}' adder (carry: {previous_carry})");
 
-        let x = &format!("x{n:02}");
-        let y = &format!("y{n:02}");
-        let z = &format!("z{n:02}");
+        let x = format!("x{n:02}");
+        let y = format!("y{n:02}");
+        let z = format!("z{n:02}");
 
-        let xy_xor = device.find_output(x, y, GateOperation::Xor)
+        let xy_xor = device.find_output(&x, &y, GateOperation::Xor)
             .expect("puzzle input missing input XOR gate");
 
-        let xy_and = device.find_output(x, y, GateOperation::And)
+        let xy_and = device.find_output(&x, &y, GateOperation::And)
             .expect("puzzle input missing input AND gate");
 
-        if let Some(carry_xor) = device.find_output(previous_carry, xy_xor, GateOperation::Xor) {
+        if let Some(carry_xor) = device.find_output(&previous_carry, &xy_xor, GateOperation::Xor) {
             if carry_xor != z {
-                panic!("{previous_carry} ^ {xy_xor} != {z}");
+                swapped_wires.push(carry_xor.clone());
+                swapped_wires.push(z.clone());
+
+                device.swap_wires(&carry_xor, &z);
+
+                // Once wires are swapped, continue to attempt this step again
+                continue;
             }
 
-            if let Some(carry_and) = device.find_output(previous_carry, xy_xor, GateOperation::And) {
-                if let Some(next_carry) = device.find_output(carry_and, xy_and, GateOperation::Or) {
+            if let Some(carry_and) = device.find_output(&previous_carry, &xy_xor, GateOperation::And) {
+                if let Some(next_carry) = device.find_output(&carry_and, &xy_and, GateOperation::Or) {
                     previous_carry = next_carry;
                 } else {
                     // some error
@@ -103,12 +112,36 @@ fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
                 todo!();
             }
         } else {
-            // some error
-            todo!();
+            // look for swapped outputs of 'x XOR y' and 'x AND y'
+            if let Some(_) = device.find_output(&previous_carry, &xy_and, GateOperation::Xor) {
+                swapped_wires.push(xy_and.clone());
+                swapped_wires.push(xy_xor.clone());
+                
+                device.swap_wires(&xy_and, &xy_xor);
+                
+                // Once wires are swapped, continue to attempt this step again
+                continue;
+            } else {
+                todo!();
+            }
         }
+
+        n += 1;
     }
 
-    todo!()
+    // Confirm device is now configured correctly
+    let expected_solution = device.expected_output();
+    let solution = device.solve();
+
+    if expected_solution != solution {
+        swapped_wires.sort();
+
+        let swapped_wires = swapped_wires.join(",");
+        
+        Ok(swapped_wires)
+    } else {
+        Err(ApplicationError::CouldntFindSolution)
+    }
 }
 
 fn output_csv(input: PathBuf, output: PathBuf) -> Result<String, ApplicationError> {
@@ -185,5 +218,7 @@ pub enum ApplicationError {
     #[error("couldn't read puzzle input: {0}")]
     CouldntReadInput(#[from] io::Error),
     #[error("couldn't parse puzzle input: {0}")]
-    CouldntParsePuzzleInput(#[from] ParsePuzzleInputError)
+    CouldntParsePuzzleInput(#[from] ParsePuzzleInputError),
+    #[error("couldn't find solution")]
+    CouldntFindSolution
 }
