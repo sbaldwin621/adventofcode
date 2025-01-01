@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use std::str::FromStr;
 
 use thiserror::Error;
@@ -7,7 +8,9 @@ use thiserror::Error;
 pub struct Device {
     wires: HashSet<String>,
     values: HashMap<String, bool>,
-    gates_by_output: HashMap<String, Gate>
+    gates: Vec<Rc<Gate>>,
+    gates_by_output: HashMap<String, Rc<Gate>>,
+    gates_by_input: HashMap<String, Vec<Rc<Gate>>>
 }
 
 impl Device {
@@ -19,16 +22,34 @@ impl Device {
         }
         
         let mut gates_by_output = HashMap::new();
+        let mut gates_by_input = HashMap::new();
 
-        for gate in gates {
+        let gates: Vec<Rc<Gate>> = gates.into_iter().map(|g| Rc::new(g)).collect();
+
+        for gate in &gates {
             wires.insert(gate.left_input.to_string());
             wires.insert(gate.right_input.to_string());
             wires.insert(gate.output.to_string());
 
-            gates_by_output.insert(gate.output.to_string(), gate);
+            gates_by_input.entry(gate.left_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
+            gates_by_input.entry(gate.right_input.to_string()).or_insert_with(|| vec![]).push(Rc::clone(gate));
+
+            gates_by_output.insert(gate.output.to_string(), Rc::clone(gate));
         }
 
-        Device { wires, values, gates_by_output }
+        Device { wires, values, gates, gates_by_output, gates_by_input }
+    }
+
+    pub fn get_value(&self, wire: &str) -> Option<bool> {
+        self.values.get(wire).cloned()
+    }
+
+    pub fn values_mut(&mut self) -> &mut HashMap<String, bool> {
+        &mut self.values
+    }
+
+    pub fn wires(&self) -> &HashSet<String> {
+        &self.wires
     }
 
     pub fn solve(&mut self) -> DeviceOutput {
@@ -54,17 +75,38 @@ impl Device {
         self.wireset_value("z")
     }
 
-    pub fn find_connections(&self, target_wire: &str) -> HashSet<String> {
+    pub fn find_upstream(&self, target_wire: &str, depth_limit: usize) -> HashSet<String> {
         let mut connections = HashSet::new();
 
-        let mut wire_stack = vec![target_wire];
-        while let Some(wire) = wire_stack.pop() {
+        let mut wire_stack = vec![(target_wire, depth_limit)];
+        while let Some((wire, depth)) = wire_stack.pop() {
             connections.insert(wire.to_string());
 
-            if let Some(gate) = self.gates_by_output.get(wire) {
-                wire_stack.push(gate.left_input());
-                wire_stack.push(gate.right_input());
-            }
+            if depth > 0 {
+                if let Some(gate) = self.gates_by_output.get(wire) {
+                    wire_stack.push((gate.left_input(), depth - 1));
+                    wire_stack.push((gate.right_input(), depth - 1));
+                }
+            }            
+        }
+
+        connections
+    }
+
+    pub fn find_downstream(&self, target_wire: &str, depth_limit: usize) -> HashSet<String> {
+        let mut connections = HashSet::new();
+
+        let mut wire_stack = vec![(target_wire, depth_limit)];
+        while let Some((wire, depth)) = wire_stack.pop() {
+            connections.insert(wire.to_string());
+
+            if depth > 0 {
+                if let Some(gates) = self.gates_by_input.get(wire) {
+                    for gate in gates {
+                        wire_stack.push((gate.output(), depth - 1));
+                    }
+                }    
+            }            
         }
 
         connections
@@ -164,13 +206,16 @@ impl DeviceOutput {
         DeviceOutput::new(difference)
     }
 
-    pub fn trues(&self) -> Vec<String> {
-        let mut trues: Vec<_> = self.values.iter()
+    pub fn trues(&self) -> HashSet<String> {
+        self.values.iter()
             .filter_map(|(w, v)| v.then(|| w.to_string()))
-            .collect();
-        trues.sort();
+            .collect()
+    }
 
-        trues
+    pub fn falses(&self) -> HashSet<String> {
+        self.values.iter()
+            .filter_map(|(w, v)| (!v).then(|| w.to_string()))
+            .collect()
     }
 }
 

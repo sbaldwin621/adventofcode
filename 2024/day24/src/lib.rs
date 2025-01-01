@@ -32,9 +32,19 @@ enum Commands {
         input: PathBuf,
         output: PathBuf
     },
-    FindConnections {
+    MapUpstream {
         input: PathBuf,
-        target_wire: String
+        target_wire: String,
+
+        #[arg(long, default_value_t = usize::MAX)]
+        depth: usize
+    },
+    MapDownstream {
+        input: PathBuf,
+        target_wire: String,
+
+        #[arg(long, default_value_t = usize::MAX)]
+        depth: usize
     }
 }
 
@@ -43,7 +53,8 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
         Commands::Part1 { input } => run_part1(input),
         Commands::Part2 { input } => run_part2(input),
         Commands::OutputCsv { input, output } => output_csv(input, output),
-        Commands::FindConnections { input, target_wire } => find_connections(input, &target_wire)
+        Commands::MapUpstream { input, target_wire, depth } => map_upstream(input, &target_wire, depth),
+        Commands::MapDownstream { input, target_wire, depth } => map_downstream(input, &target_wire, depth),
     }?;
 
     Ok(result.to_string())
@@ -58,16 +69,63 @@ fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
 
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
-    let mut device = puzzle_input.into_device();
-    
-    let expected_output = device.expected_output();
-    let actual_output = device.solve();
+    let mut unsolved_device = puzzle_input.into_device();
+
+    let mut original_device = unsolved_device.clone();
+    let actual_output = original_device.solve();
+
+    let expected_output = unsolved_device.expected_output();
 
     let difference = expected_output.difference(&actual_output);
-    let wrong_wires = difference.trues();
+    let correct_wires: HashSet<String> = difference.falses().iter().cloned().collect();
+    let wrong_wires: HashSet<String> = difference.trues().iter().cloned().collect();
+    
+    let mut interesting_true_wires = vec![];
+    let mut interesting_false_wires = vec![];
+    for wire in unsolved_device.wires() {
+        if wire.starts_with("x") || wire.starts_with("y") {
+            continue;
+        }
 
-    println!("incorrect wires: {}", wrong_wires.join(", "));
+        let value = original_device.get_value(wire).unwrap();
 
+        let mut device = unsolved_device.clone();
+        device.values_mut().insert(wire.clone(), !value);
+
+        let tweaked_output = device.solve();
+        let tweaked_difference = expected_output.difference(&tweaked_output);
+
+        if correct_wires.is_disjoint(&tweaked_difference.trues()) {
+            let score = tweaked_difference.trues().len();
+            // println!("wire '{}' does not affect correct wires; {} wrong outputs", wire, score);
+
+            if value {
+                interesting_true_wires.push((wire, score));
+            } else {
+                interesting_false_wires.push((wire, score));
+            }
+        }
+    }
+
+    interesting_true_wires.sort_by_key(|(_, score)| *score);
+    interesting_false_wires.sort_by_key(|(_, score)| *score);
+
+    let mut device = unsolved_device.clone();
+    device.values_mut().insert(interesting_true_wires[0].0.clone(), false);
+    device.values_mut().insert(interesting_true_wires[1].0.clone(), false);
+    device.values_mut().insert(interesting_true_wires[2].0.clone(), false);
+    device.values_mut().insert(interesting_true_wires[3].0.clone(), false);
+
+    device.values_mut().insert(interesting_false_wires[0].0.clone(), true);
+    device.values_mut().insert(interesting_false_wires[1].0.clone(), true);
+    device.values_mut().insert(interesting_false_wires[2].0.clone(), true);
+    device.values_mut().insert(interesting_false_wires[3].0.clone(), true);
+    
+    let tweaked_output = device.solve();
+    let tweaked_difference = expected_output.difference(&tweaked_output);
+
+    println!("{}", tweaked_difference.trues().len());
+    
     todo!()
 }
 
@@ -82,7 +140,7 @@ fn output_csv(input: PathBuf, output: PathBuf) -> Result<String, ApplicationErro
     
     let mut nodes_to_include = HashSet::new();
     for wire in difference.trues() {
-        let connections = device.find_connections(&wire);
+        let connections = device.find_upstream(&wire, usize::MAX);
         nodes_to_include.extend(connections);
     }
 
@@ -105,11 +163,22 @@ fn output_csv(input: PathBuf, output: PathBuf) -> Result<String, ApplicationErro
     Ok("".to_string())
 }
 
-fn find_connections(input: PathBuf, target_wire: &str) -> Result<String, ApplicationError> {
+fn map_upstream(input: PathBuf, target_wire: &str, depth: usize) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
     let device = puzzle_input.into_device();
 
-    let connections = device.find_connections(target_wire);
+    let connections = device.find_upstream(target_wire, depth);
+
+    println!("{:?} ({})", connections, connections.len());
+
+    Ok("".to_string())
+}
+
+fn map_downstream(input: PathBuf, target_wire: &str, depth: usize) -> Result<String, ApplicationError> {
+    let puzzle_input = read_puzzle_input(input)?;
+    let device = puzzle_input.into_device();
+
+    let connections = device.find_downstream(target_wire, depth);
 
     println!("{:?} ({})", connections, connections.len());
 
