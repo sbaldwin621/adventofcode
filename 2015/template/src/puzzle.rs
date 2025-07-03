@@ -17,3 +17,13 @@ impl FromStr for PuzzleInput {
 #[derive(Error, Debug)]
 pub enum ParsePuzzleInputError {
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test() {
+        todo!()
+    }
+}
