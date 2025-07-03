@@ -37,14 +37,16 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
-    
+
     Ok(puzzle_input.eval().to_string())
 }
 
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
     
-    todo!()
+    puzzle_input.first_basement()
+        .map(|f| f.to_string())
+        .ok_or(ApplicationError::NoAnswer)
 }
 
 fn read_puzzle_input(filename: PathBuf) -> Result<PuzzleInput, ApplicationError> {
@@ -61,5 +63,7 @@ pub enum ApplicationError {
     #[error("couldn't read puzzle input: {0}")]
     CouldntReadInput(#[from] io::Error),
     #[error("couldn't parse puzzle input: {0}")]
-    CouldntParseInput(#[from] ParsePuzzleInputError)
+    CouldntParseInput(#[from] ParsePuzzleInputError),
+    #[error("couldn't find answer")]
+    NoAnswer
 }

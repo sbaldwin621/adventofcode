@@ -18,6 +18,22 @@ impl PuzzleInput {
             Instruction::Down => -1,
         }).sum()
     }
+
+    pub fn first_basement(&self) -> Option<usize> {
+        let mut current_floor = 0;
+        for (i, instruction) in self.instructions.iter().enumerate() {
+            match instruction {
+                Instruction::Up => current_floor += 1,
+                Instruction::Down => current_floor -= 1,
+            }
+
+            if current_floor == -1 {
+                return Some(i + 1);
+            }
+        }
+
+        None
+    }
 }
 
 impl FromStr for PuzzleInput {
@@ -68,5 +84,11 @@ mod tests {
 
         assert!(")))".parse::<PuzzleInput>().unwrap().eval() == -3);
         assert!(")())())".parse::<PuzzleInput>().unwrap().eval() == -3);
+    }
+
+    #[test]
+    pub fn part2_examples() {
+        assert!(")".parse::<PuzzleInput>().unwrap().first_basement() == Some(1));
+        assert!("()())".parse::<PuzzleInput>().unwrap().first_basement() == Some(5));
     }
 }
