@@ -18,8 +18,12 @@ impl PuzzleInput {
         self.presents.iter().map(|p| p.surface_area()).sum()
     }
 
-    pub fn total_needed_paper(&self) -> u32 {
+    pub fn total_paper_needed(&self) -> u32 {
         self.presents.iter().map(|p| p.surface_area() + p.extra_needed()).sum()
+    }
+
+    pub fn total_ribbon_needed(&self) -> u32 {
+        self.presents.iter().map(|p| p.ribbon_needed()).sum()
     }
 }
 
@@ -57,24 +61,48 @@ impl PresentDimensions {
         PresentDimensions { l, w, h }
     }
 
-    pub fn lw(&self) -> u32 {
+    pub fn top_area(&self) -> u32 {
         self.l * self.w
     }
 
-    pub fn wh(&self) -> u32 {
+    pub fn front_area(&self) -> u32 {
         self.w * self.h
     }
 
-    pub fn lh(&self) -> u32 {
+    pub fn side_area(&self) -> u32 {
         self.l * self.h
     }
 
     pub fn surface_area(&self) -> u32 {
-        2 * self.lw() + 2 * self.wh() + 2 * self.lh()
+        2 * self.top_area() + 2 * self.front_area() + 2 * self.side_area()
     }
 
     pub fn extra_needed(&self) -> u32 {
-        [self.lw(), self.wh(), self.lh()].into_iter().min().unwrap_or(0)
+        [self.top_area(), self.front_area(), self.side_area()].into_iter().min().unwrap()
+    }
+
+    pub fn top_perimeter(&self) -> u32 {
+        self.l * 2 + self.w * 2
+    }
+
+    pub fn front_perimeter(&self) -> u32 {
+        self.w * 2 + self.h * 2
+    }
+
+    pub fn side_perimeter(&self) -> u32 {
+        self.l * 2 + self.h * 2
+    }
+
+    pub fn smallest_perimeter(&self) -> u32 {
+        [self.top_perimeter(), self.front_perimeter(), self.side_perimeter()].into_iter().min().unwrap()
+    }
+
+    pub fn volume(&self) -> u32 {
+        self.l * self.w * self.h
+    }
+
+    pub fn ribbon_needed(&self) -> u32 {
+        self.smallest_perimeter() + self.volume()
     }
 }
 
@@ -92,7 +120,13 @@ mod tests {
 
     #[test]
     pub fn part1_examples() {
-        assert!("2x3x4".parse::<PuzzleInput>().unwrap().total_needed_paper() == 58);
-        assert!("1x1x10".parse::<PuzzleInput>().unwrap().total_needed_paper() == 43);
+        assert!("2x3x4".parse::<PuzzleInput>().unwrap().total_paper_needed() == 58);
+        assert!("1x1x10".parse::<PuzzleInput>().unwrap().total_paper_needed() == 43);
+    }
+
+    #[test]
+    pub fn part2_examples() {
+        assert!("2x3x4".parse::<PuzzleInput>().unwrap().total_ribbon_needed() == 34);
+        assert!("1x1x10".parse::<PuzzleInput>().unwrap().total_ribbon_needed() == 14);
     }
 }
