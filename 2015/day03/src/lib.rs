@@ -44,7 +44,7 @@ fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
     
-    todo!()
+    Ok(puzzle_input.houses_visited_with_robosanta().to_string())
 }
 
 fn read_puzzle_input(filename: PathBuf) -> Result<PuzzleInput, ApplicationError> {
