@@ -38,13 +38,13 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
 
-    Ok(puzzle_input.evaluate().to_string())
+    Ok(puzzle_input.evaluate_part1().to_string())
 }
 
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
     
-    todo!()
+    Ok(puzzle_input.evaluate_part2().to_string())
 }
 
 fn read_puzzle_input(filename: PathBuf) -> Result<PuzzleInput, ApplicationError> {

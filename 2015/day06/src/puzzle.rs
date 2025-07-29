@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::num::ParseIntError;
 use std::str::FromStr;
 
@@ -15,15 +15,24 @@ impl PuzzleInput {
         PuzzleInput { instructions }
     }
 
-    pub fn evaluate(&self) -> usize {
+    pub fn evaluate_part1(&self) -> usize {
         let mut light_grid = LightGrid::new();
 
         for instruction in self.instructions.iter() {
-            light_grid.apply_instruction(instruction);
-            println!("{:?} -> {}", instruction, light_grid.len());
+            light_grid.apply_instruction_part1(instruction);
         }
 
-        light_grid.len()
+        light_grid.total_brightness()
+    }
+
+    pub fn evaluate_part2(&self) -> usize {
+        let mut light_grid = LightGrid::new();
+
+        for instruction in self.instructions.iter() {
+            light_grid.apply_instruction_part2(instruction);
+        }
+
+        light_grid.total_brightness()
     }
 }
 
@@ -93,26 +102,30 @@ impl Instruction {
 
 #[derive(Debug)]
 pub struct LightGrid {
-    lights: HashSet<Point>
+    lights: HashMap<Point, usize>
 }
 
 impl LightGrid {
     pub fn new() -> LightGrid {
-        LightGrid { lights: HashSet::new() }
+        LightGrid { lights: HashMap::new() }
     }
 
-    pub fn apply_instruction(&mut self, instruction: &Instruction) {
+    pub fn apply_instruction_part1(&mut self, instruction: &Instruction) {
         for y in instruction.point1.1..=instruction.point2.1 {
             for x in instruction.point1.0..=instruction.point2.0 {
                 let point = Point(x, y);
                 match instruction.operation {    
-                    Operation::TurnOn => { self.lights.insert(point); }
-                    Operation::TurnOff => { self.lights.remove(&point); }
+                    Operation::TurnOn => {
+                        self.lights.insert(point, 1);
+                    }
+                    Operation::TurnOff => {
+                        self.lights.remove(&point);
+                    }
                     Operation::Toggle => {
-                        if self.lights.contains(&point) {
+                        if self.lights.contains_key(&point) {
                             self.lights.remove(&point);
                         } else {
-                            self.lights.insert(point);
+                            self.lights.insert(point, 1);
                         }
                     }
                 };
@@ -120,8 +133,41 @@ impl LightGrid {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.lights.len()
+    pub fn apply_instruction_part2(&mut self, instruction: &Instruction) {
+        for y in instruction.point1.1..=instruction.point2.1 {
+            for x in instruction.point1.0..=instruction.point2.0 {
+                let point = Point(x, y);
+                match instruction.operation {    
+                    Operation::TurnOn => {
+                        if let Some(brightness) = self.lights.get_mut(&point) {
+                            *brightness += 1;
+                        } else {
+                            self.lights.insert(point, 1);
+                        }
+                    }
+                    Operation::TurnOff => {
+                        if let Some(brightness) = self.lights.get_mut(&point) {
+                            if *brightness > 1 {
+                                *brightness -= 1;
+                            } else {
+                                self.lights.remove(&point);
+                            }
+                        }
+                    }
+                    Operation::Toggle => {
+                        if let Some(brightness) = self.lights.get_mut(&point) {
+                            *brightness += 2;
+                        } else {
+                            self.lights.insert(point, 2);
+                        }
+                    }
+                };
+            }
+        }
+    }
+
+    pub fn total_brightness(&self) -> usize {
+        self.lights.values().sum()
     }
 }
 
@@ -133,13 +179,13 @@ mod tests {
     pub fn part1_examples() {
         let mut light_grid = LightGrid::new();
 
-        light_grid.apply_instruction(&Instruction::new(Operation::TurnOn, Point(0, 0), Point(999, 999)));
-        assert_eq!(light_grid.len(), 1_000_000);
+        light_grid.apply_instruction_part1(&Instruction::new(Operation::TurnOn, Point(0, 0), Point(999, 999)));
+        assert_eq!(light_grid.total_brightness(), 1_000_000);
         
-        light_grid.apply_instruction(&Instruction::new(Operation::TurnOff, Point(0, 0), Point(499, 999)));
-        assert_eq!(light_grid.len(), 500_000);
+        light_grid.apply_instruction_part1(&Instruction::new(Operation::TurnOff, Point(0, 0), Point(499, 999)));
+        assert_eq!(light_grid.total_brightness(), 500_000);
 
-        light_grid.apply_instruction(&Instruction::new(Operation::Toggle, Point(250, 0), Point(749, 999)));
-        assert_eq!(light_grid.len(), 500_000);
+        light_grid.apply_instruction_part1(&Instruction::new(Operation::Toggle, Point(250, 0), Point(749, 999)));
+        assert_eq!(light_grid.total_brightness(), 500_000);
     }
 }
