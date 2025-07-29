@@ -37,15 +37,16 @@ pub fn run(options: CliOptions) -> Result<String, ApplicationError> {
 
 fn run_part1(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
-    let nice_count = puzzle_input.nice_strings().count();
+    let nice_count = puzzle_input.part1_nice_strings().count();
 
     Ok(nice_count.to_string())
 }
 
 fn run_part2(input: PathBuf) -> Result<String, ApplicationError> {
     let puzzle_input = read_puzzle_input(input)?;
+    let nice_count = puzzle_input.part2_nice_strings().count();
     
-    todo!()
+    Ok(nice_count.to_string())
 }
 
 fn read_puzzle_input(filename: PathBuf) -> Result<PuzzleInput, ApplicationError> {
