@@ -1,0 +1,11 @@
+[package]
+name = "advent_of_code_2015_day_7"
+version = "0.1.0"
+authors = ["Scott Baldwin <sbaldwin621@gmail.com>"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.5.40", features = ["derive"] }
+thiserror = "2.0.12"
