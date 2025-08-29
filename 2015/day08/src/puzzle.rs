@@ -11,6 +11,10 @@ impl PuzzleInput {
     pub fn difference(&self) -> usize {
         self.string_expressions.iter().map(|s| s.difference()).sum()
     }
+
+    pub fn reencoded_difference(&self) -> usize {
+        self.string_expressions.iter().map(|s| s.reencoded_difference()).sum()
+    }
 }
 
 impl FromStr for PuzzleInput {
@@ -43,6 +47,34 @@ impl StringExpression {
     pub fn difference(&self) -> usize {
         self.text.len() - self.actual.len()
     }
+
+    pub fn reencode(&self) -> String {
+        let mut reencoded = String::new();
+
+        reencoded.push('"');
+
+        for c in self.text.chars() {
+            match c {
+                '"' => {
+                    reencoded.push_str("\\\"");
+                },
+                '\\' => {
+                    reencoded.push_str("\\\\")
+                },
+                _ => {
+                    reencoded.push(c);
+                }
+            }
+        }
+        
+        reencoded.push('"');
+
+        reencoded
+    }
+
+    pub fn reencoded_difference(&self) -> usize {
+        self.reencode().len() - self.text.len()
+    }
 }
 
 impl FromStr for StringExpression {
@@ -60,7 +92,7 @@ impl FromStr for StringExpression {
                 StringExpressionParserState::Start => {
                     match iter.next() {
                         Some('"') => StringExpressionParserState::Contents,
-                        Some(c) => { return Err(ParseStringExpressionError::UnexpectedCharacter); },
+                        Some(_) => { return Err(ParseStringExpressionError::UnexpectedCharacter); },
                         None => { return Err(ParseStringExpressionError::UnexpectedEndOfLine); }
                     }
                 },
@@ -172,8 +204,15 @@ pub enum ParseStringExpressionError {
 mod tests {
     use super::*;
 
+    fn case(s: &str) -> String {
+        s.parse::<StringExpression>().unwrap().reencode()
+    }
+
     #[test]
-    pub fn test() {
-        todo!()
+    pub fn reencode() {
+        assert_eq!(case(r#""""#), r#""\"\"""#);
+        assert_eq!(case(r#""abc""#), r#""\"abc\"""#);
+        assert_eq!(case(r#""aaa\"aaa""#), r#""\"aaa\\\"aaa\"""#);
+        assert_eq!(case(r#""\x27""#), r#""\"\\x27\"""#);
     }
 }
