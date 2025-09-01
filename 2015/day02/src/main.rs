@@ -2,7 +2,7 @@ use std::process;
 
 use clap::Parser;
 
-use advent_of_code_2015_day_x::{run, CliOptions};
+use advent_of_code_2015_day_2::{run, CliOptions};
 
 fn main() {
     let cli_options = CliOptions::parse();
